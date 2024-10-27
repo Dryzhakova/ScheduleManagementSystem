@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebAppsMoodle.Models;
 
@@ -10,9 +11,11 @@ using WebAppsMoodle.Models;
 namespace WebAppsMoodle.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20241027130554_OneTimeClassDateCreateTable")]
+    partial class OneTimeClassDateCreateTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.10");
@@ -65,47 +68,18 @@ namespace WebAppsMoodle.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<TimeSpan>("OneTimeClassEndTime")
+                    b.Property<DateTime>("OneTimeClassEndTime")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("OneTimeClassFullDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<TimeSpan>("OneTimeClassStartTime")
+                    b.Property<DateTime>("OneTimeClassStartTime")
                         .HasColumnType("TEXT");
 
                     b.HasKey("OneTimeClassDateId");
 
                     b.ToTable("OneTimeClasses");
-                });
-
-            modelBuilder.Entity("WebAppsMoodle.Models.RecurringClassDate", b =>
-                {
-                    b.Property<string>("RecurringClassDateId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ClassesId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsEven")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsEveryWeek")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("RecurrenceDay")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<TimeSpan>("RecurrenceEndTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<TimeSpan>("RecurrenceStartTime")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("RecurringClassDateId");
-
-                    b.ToTable("RecurringClasses");
                 });
 
             modelBuilder.Entity("WebAppsMoodle.Models.Room", b =>

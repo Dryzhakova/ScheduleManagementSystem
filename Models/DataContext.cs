@@ -8,6 +8,11 @@ namespace WebAppsMoodle.Models
         {
         }
         public DbSet<Teacher> Teachers { get; set; }
+        public DbSet<Room> Rooms { get; set; }
+        public DbSet<Classes> Classes { get; set; } 
+        public DbSet<ClassesDescription> ClassesDescription { get; set; }
+        public DbSet<OneTimeClassDate> OneTimeClasses { get; set; }
+        public DbSet<RecurringClassDate> RecurringClasses { get; set;}
 
     }
 }

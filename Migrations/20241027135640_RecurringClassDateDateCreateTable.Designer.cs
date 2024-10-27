@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebAppsMoodle.Models;
 
@@ -10,9 +11,11 @@ using WebAppsMoodle.Models;
 namespace WebAppsMoodle.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20241027135640_RecurringClassDateDateCreateTable")]
+    partial class RecurringClassDateDateCreateTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.10");
@@ -65,13 +68,13 @@ namespace WebAppsMoodle.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<TimeSpan>("OneTimeClassEndTime")
+                    b.Property<DateTime>("OneTimeClassEndTime")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("OneTimeClassFullDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<TimeSpan>("OneTimeClassStartTime")
+                    b.Property<DateTime>("OneTimeClassStartTime")
                         .HasColumnType("TEXT");
 
                     b.HasKey("OneTimeClassDateId");
