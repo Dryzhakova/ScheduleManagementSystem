@@ -68,9 +68,9 @@ namespace WebAppsMoodle.Controllers
             {
                 return BadRequest("Invalid login");
             }
-            
+
             // Сохраняем TeacherId в сессию
-            HttpContext.Session.SetString("TeacherId",teacher.TeacherId);
+            HttpContext.Session.SetString("TeacherId", teacher.TeacherId);
 
             return Ok(new { Message = "Login successful", TeacherId = teacher.TeacherId });
 
@@ -82,6 +82,7 @@ namespace WebAppsMoodle.Controllers
              return Ok(new { Token = token });*/
 
         }
+        
 
         [HttpPost("createClass")]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model)
@@ -199,7 +200,7 @@ namespace WebAppsMoodle.Controllers
         }
 
         // Endpoint to get all classes for a specific teacher
-        [HttpGet("GetAllClassesTeacher")]
+        [HttpGet("teacher/room/all")]
         public async Task<IActionResult> GetClassesForTeacher()
         {
             // Получаем TeacherId из сессии
@@ -227,7 +228,7 @@ namespace WebAppsMoodle.Controllers
         }
 
         // Endpoint to get all classes for a specific room
-        [HttpGet("classes/room/{roomId}")]
+        [HttpGet("classes/room/id")]
         public async Task<IActionResult> GetClassesForRoom(string roomNumber)
         {
             var roomId = await GetRoomIdByRoomNumberAsync(roomNumber);
@@ -247,7 +248,7 @@ namespace WebAppsMoodle.Controllers
             // Получаем все занятия, привязанные к RoomId этой комнаты
             var classes = await _context.Classes
                 .Where(c => c.RoomId == roomId) // Используем RoomId, найденный в предыдущем запросе
-                //.Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
+                                                //.Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
                 .ToListAsync();
 
             // Проверяем, есть ли занятия для данной комнаты
@@ -286,26 +287,54 @@ namespace WebAppsMoodle.Controllers
             return room?.RoomId; // Возвращаем RoomId или null, если комната не найдена
         }
 
-
-
-        // Endpoint to get RoomId by room number
-        [HttpGet("roomId/{roomNumber}")]
-        public async Task<IActionResult> GetRoomIdByRoomNumber(string roomNumber)
+        // Endpoint to get all classes for a specific day of the week
+        [HttpGet("classes/day/dayOfWeek")]
+        public async Task<IActionResult> GetClassesForDayOfWeek(int dayOfWeek)
         {
-            // Проверяем, существует ли комната с данным номером
-            var room = await _context.Rooms
-                .AsNoTracking() // Убираем отслеживание для оптимизации запроса
-                .SingleOrDefaultAsync(r => r.RoomNumber == roomNumber);
-
-            // Если комната не найдена, возвращаем сообщение об ошибке
-            if (room == null)
+            // Проверяем, что введенное значение дня недели находится в пределах от 0 до 6
+            if (dayOfWeek < 0 || dayOfWeek > 6) // Так как DayOfWeek начинается с 0 (воскресенье) по 6 (суббота)
             {
-                return NotFound("Room does not exist.");
+                return BadRequest("Invalid day of the week. Please provide a number between 0 (Sunday) and 6 (Saturday).");
             }
 
-            // Возвращаем RoomId
-            return Ok(new { RoomId = room.RoomId });
+            // Приводим `int` к `DayOfWeek`
+            DayOfWeek selectedDay = (DayOfWeek)dayOfWeek;
+
+            // Получаем все занятия для указанного дня недели
+            var classes = await _context.RecurringClasses
+                .Where(c => c.RecurrenceDay == selectedDay) // Сравниваем с типом `DayOfWeek`
+                .ToListAsync();
+
+
+            // Проверяем, есть ли занятия для данного дня недели
+            if (classes.Count == 0)
+            {
+                return NotFound($"No classes found for the specified day of the week: {dayOfWeek}.");
+            }
+
+            // Возвращаем список занятий
+            return Ok(classes);
         }
+
+
+        /*  // Endpoint to get RoomId by room number
+          [HttpGet("roomId/{roomNumber}")]
+          public async Task<IActionResult> GetRoomIdByRoomNumber(string roomNumber)
+          {
+              // Проверяем, существует ли комната с данным номером
+              var room = await _context.Rooms
+                  .AsNoTracking() // Убираем отслеживание для оптимизации запроса
+                  .SingleOrDefaultAsync(r => r.RoomNumber == roomNumber);
+
+              // Если комната не найдена, возвращаем сообщение об ошибке
+              if (room == null)
+              {
+                  return NotFound("Room does not exist.");
+              }
+
+              // Возвращаем RoomId
+              return Ok(new { RoomId = room.RoomId });
+          }*/
 
 
         // Helper method to generate JWT token
