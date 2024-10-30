@@ -94,6 +94,7 @@ namespace WebAppsMoodle.Controllers
             //if (existingRoom == null) { return BadRequest("Room does not exist."); } проверка сушествует ли уже в такой день и время занятие если нет создаем 
 
             Room newRoom;
+            Classes newClass;
 
             //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! можно только одну такую комнату єксепшин если время в такой комнате уже занято с которой его хотят занять
             // Если комната не существует, создаем новую
@@ -126,7 +127,7 @@ namespace WebAppsMoodle.Controllers
             {
 
                 // Создаем новое занятие
-                var newClass = new Classes
+                newClass = new Classes
                 {
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
@@ -151,7 +152,7 @@ namespace WebAppsMoodle.Controllers
             }
             else
             {
-                var newClass = new Classes
+                newClass = new Classes
                 {  
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
@@ -192,7 +193,7 @@ namespace WebAppsMoodle.Controllers
             await _context.SaveChangesAsync(); // Сохраняем изменения в базе данных
 
         }*/
-            return Ok(new { Message = "Class and Room created successfully." });
+            return Ok(new { Message = "Class and Room created successfully.", ClassesID = newClass.ClassesId });
         }
 
         // Endpoint to get all classes for a specific teacher
@@ -203,29 +204,6 @@ namespace WebAppsMoodle.Controllers
             var teacherId = HttpContext.Session.GetString("TeacherId");
 
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
-
-            //!!!!!!!!!!!!!!! сделать вывод названия, описания и кабинет, IsCanceled or not
-            // Получаем все занятия для данного преподавателя
-
-           /* var classes = await _context.Classes
-                *//*.Include(c => c.Room)               // Подключаем информацию о комнате
-                .Include(c => c.Teacher)            // Подключаем информацию о преподавателе
-                .Include(c => c.ClassesDescriptions) // Подключаем информацию о занятии*//*
-                .Where(c => c.TeacherId == teacherId)
-                .Select(c => new
-                {
-                   *//* RoomNumber = c.Room.RoomNumber,
-                    TeacherName = c.Teacher.Title,
-                    ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),*//*
-                    IsCanceled = c.IsCanceled
-                })
-                .ToListAsync();*/
-
-          /*  var classes = await _context.Classes
-                *//*.Include(c => c.Room) // Подключаем информацию о комнате
-                .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*//*
-                .Where(c => c.TeacherId == teacherId)
-                .ToListAsync();*/
 
             var classes = await _context.Classes
               .Include(c => c.Room) // Подключаем информацию о комнате
@@ -242,15 +220,40 @@ namespace WebAppsMoodle.Controllers
               })
               .ToListAsync();
 
-            if (classes.Count == 0)return NotFound("No classes found for this teacher.");
+            if (classes.Count == 0) return NotFound("No classes found for this teacher.");
 
-/*            var recurringClasses = await _context.RecurringClasses
-                .Where(rc => classes.Select(c => c.ClassesId).Contains(rc.ClassesId))
-                .ToListAsync();
+            //!!!!!!!!!!!!!!! сделать вывод названия, описания и кабинет, IsCanceled or not
+            // Получаем все занятия для данного преподавателя
 
-            var oneTimeClasses = await _context.OneTimeClasses
-                .Where(oc => classes.Select(c => c.ClassesId).Contains(oc.ClassesId))
-                .ToListAsync();*/
+            /* var classes = await _context.Classes
+                 *//*.Include(c => c.Room)               // Подключаем информацию о комнате
+                 .Include(c => c.Teacher)            // Подключаем информацию о преподавателе
+                 .Include(c => c.ClassesDescriptions) // Подключаем информацию о занятии*//*
+                 .Where(c => c.TeacherId == teacherId)
+                 .Select(c => new
+                 {
+                    *//* RoomNumber = c.Room.RoomNumber,
+                     TeacherName = c.Teacher.Title,
+                     ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),*//*
+                     IsCanceled = c.IsCanceled
+                 })
+                 .ToListAsync();*/
+
+            /*  var classes = await _context.Classes
+                  *//*.Include(c => c.Room) // Подключаем информацию о комнате
+                  .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*//*
+                  .Where(c => c.TeacherId == teacherId)
+                  .ToListAsync();*/
+
+
+
+            /*            var recurringClasses = await _context.RecurringClasses
+                            .Where(rc => classes.Select(c => c.ClassesId).Contains(rc.ClassesId))
+                            .ToListAsync();
+
+                        var oneTimeClasses = await _context.OneTimeClasses
+                            .Where(oc => classes.Select(c => c.ClassesId).Contains(oc.ClassesId))
+                            .ToListAsync();*/
 
             return Ok(new { Classes = classes/*, RecurringClasses = recurringClasses, OneTimeClasses = oneTimeClasses */});
         }
@@ -276,7 +279,13 @@ namespace WebAppsMoodle.Controllers
             // Получаем все занятия, привязанные к RoomId этой комнаты
             var classes = await _context.Classes
                 .Where(c => c.RoomId == roomId) // Используем RoomId, найденный в предыдущем запросе
-                                                //.Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
+                 //.Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
+                 .Select(c => new
+                 {  
+                    // ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),
+                     RoomNumber = c.Room.RoomNumber,
+                     TeacherName = c.Teacher.Username
+                 })
                 .ToListAsync();
 
             // Проверяем, есть ли занятия для данной комнаты
