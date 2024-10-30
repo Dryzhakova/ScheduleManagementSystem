@@ -130,6 +130,7 @@ namespace WebAppsMoodle.Controllers
                 {
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
+                   // DescriptionId = classesDescription.ClassesDescriptionId,
                     IsCanceled = model.IsCanceled
                 };
 
@@ -154,6 +155,7 @@ namespace WebAppsMoodle.Controllers
                 {  
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
+                    //DescriptionId = classesDescription.ClassesDescriptionId,
                     IsCanceled = model.IsCanceled
                 };
 
@@ -226,14 +228,15 @@ namespace WebAppsMoodle.Controllers
                 .ToListAsync();*/
 
             var classes = await _context.Classes
-              /*.Include(c => c.Room) // Подключаем информацию о комнате
-              .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*/
+              .Include(c => c.Room) // Подключаем информацию о комнате
+              /*..Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*/
               .Where(c => c.TeacherId == teacherId)
               .Select(c => new
               {
-                  /* RoomNumber = c.Room.RoomNumber, 
+                  /* 
                   ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),
                   */
+                  RoomNumber = c.Room.RoomNumber,
                   TeacherName = c.Teacher.Username,
                   IsCanceled = c.IsCanceled
               })

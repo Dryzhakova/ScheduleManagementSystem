@@ -20,6 +20,12 @@ namespace WebAppsMoodle.Models
            .HasOne(c => c.Teacher)
            .WithMany(t => t.Classes)
            .HasForeignKey(c => c.TeacherId);
+
+            modelBuilder.Entity<Classes>()
+           .HasOne(c => c.Room)
+           .WithMany(r => r.Classes)
+           .HasForeignKey(c => c.RoomId);
+
         }
     }
 }
