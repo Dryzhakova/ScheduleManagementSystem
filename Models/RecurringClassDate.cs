@@ -2,7 +2,7 @@
 {
     public class RecurringClassDate
     {
-        public string RecurringClassDateId { get; set; }
+        public string RecurringClassDateId { get; set; } = Guid.NewGuid().ToString();
         public string ClassesId { get; set; }
         public bool IsEveryWeek { get; set; }
         public bool IsEven { get; set; }// четное или нечетное 

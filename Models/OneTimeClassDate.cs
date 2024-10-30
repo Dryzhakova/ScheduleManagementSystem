@@ -4,7 +4,7 @@ namespace WebAppsMoodle.Models
 {
     public class OneTimeClassDate
     {
-        public string OneTimeClassDateId { get; set; }
+        public string OneTimeClassDateId { get; set; } = Guid.NewGuid().ToString();
         public string ClassesId { get; set; }
         public DateTime OneTimeClassFullDate { get; set; }
         /* public DateTime OneTimeClassStartTime { get; set; }

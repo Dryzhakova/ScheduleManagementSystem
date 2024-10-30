@@ -45,7 +45,6 @@ namespace WebAppsMoodle.Controllers
             // We should hash the password before storing it
             var newTeacher = new Teacher
             {
-                TeacherId = Guid.NewGuid().ToString(),
                 Username = model.Username,
                 Password = model.Password,
                 Title = ""
@@ -101,8 +100,7 @@ namespace WebAppsMoodle.Controllers
             if (existingRoom == null)
             {
                 newRoom = new Room
-                {
-                    RoomId = Guid.NewGuid().ToString(), // Генерируем новый ID для комнаты
+                {  
                     RoomNumber = model.RoomNumber
                 };
 
@@ -117,7 +115,6 @@ namespace WebAppsMoodle.Controllers
             // Создаем описание занятия
             var classesDescription = new ClassesDescription
             {
-                ClassesDescriptionId = Guid.NewGuid().ToString(), // Генерируем новый ID для описания
                 Title = model.Title, // Заголовок занятия
                 Description = model.Description // Описание занятия
             };
@@ -131,7 +128,6 @@ namespace WebAppsMoodle.Controllers
                 // Создаем новое занятие
                 var newClass = new Classes
                 {
-                    ClassesId = Guid.NewGuid().ToString(), // Генерируем новый ID для занятия
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
                     IsCanceled = model.IsCanceled
@@ -143,7 +139,6 @@ namespace WebAppsMoodle.Controllers
                 // Создаем запись для одноразового занятия
                 var oneTimeClassDate = new OneTimeClassDate
                 {
-                    OneTimeClassDateId = Guid.NewGuid().ToString(),
                     ClassesId = newClass.ClassesId,
                     OneTimeClassFullDate = model.OneTimeClassFullDate,
                     OneTimeClassStartTime = model.OneTimeClassStartTime.ToTimeSpan(),
@@ -156,8 +151,7 @@ namespace WebAppsMoodle.Controllers
             else
             {
                 var newClass = new Classes
-                {
-                    ClassesId = Guid.NewGuid().ToString(),
+                {  
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
                     IsCanceled = model.IsCanceled
@@ -168,8 +162,7 @@ namespace WebAppsMoodle.Controllers
 
                 // Запись для повторяющегося занятия
                 var recurringClassDate = new RecurringClassDate
-                {
-                    RecurringClassDateId = Guid.NewGuid().ToString(),
+                {  
                     ClassesId = newClass.ClassesId,
                     IsEven = model.IsEven,
                     IsEveryWeek = model.IsEveryWeek,
@@ -211,23 +204,53 @@ namespace WebAppsMoodle.Controllers
 
             //!!!!!!!!!!!!!!! сделать вывод названия, описания и кабинет, IsCanceled or not
             // Получаем все занятия для данного преподавателя
-            var classes = await _context.Classes
-               /* .Include(c => c.Room) // Подключаем информацию о комнате*/
-               /* .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*/
+
+           /* var classes = await _context.Classes
+                *//*.Include(c => c.Room)               // Подключаем информацию о комнате
+                .Include(c => c.Teacher)            // Подключаем информацию о преподавателе
+                .Include(c => c.ClassesDescriptions) // Подключаем информацию о занятии*//*
                 .Where(c => c.TeacherId == teacherId)
-                .ToListAsync();
+                .Select(c => new
+                {
+                   *//* RoomNumber = c.Room.RoomNumber,
+                    TeacherName = c.Teacher.Title,
+                    ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),*//*
+                    IsCanceled = c.IsCanceled
+                })
+                .ToListAsync();*/
+
+          /*  var classes = await _context.Classes
+                *//*.Include(c => c.Room) // Подключаем информацию о комнате
+                .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*//*
+                .Where(c => c.TeacherId == teacherId)
+                .ToListAsync();*/
+
+            var classes = await _context.Classes
+              /*.Include(c => c.Room) // Подключаем информацию о комнате
+              .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*/
+              .Where(c => c.TeacherId == teacherId)
+              .Select(c => new
+              {
+                  /* RoomNumber = c.Room.RoomNumber,
+                  TeacherName = c.Teacher.Title,
+                  ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),
+                  */
+                  TeacherId = c.TeacherId,
+                  IsCanceled = c.IsCanceled
+              })
+              .ToListAsync();
 
             if (classes.Count == 0)return NotFound("No classes found for this teacher.");
 
-            var recurringClasses = await _context.RecurringClasses
+/*            var recurringClasses = await _context.RecurringClasses
                 .Where(rc => classes.Select(c => c.ClassesId).Contains(rc.ClassesId))
                 .ToListAsync();
 
             var oneTimeClasses = await _context.OneTimeClasses
                 .Where(oc => classes.Select(c => c.ClassesId).Contains(oc.ClassesId))
-                .ToListAsync();
+                .ToListAsync();*/
 
-            return Ok(new { Classes = classes, RecurringClasses = recurringClasses, OneTimeClasses = oneTimeClasses });
+            return Ok(new { Classes = classes/*, RecurringClasses = recurringClasses, OneTimeClasses = oneTimeClasses */});
         }
 
         // Endpoint to get all classes for a specific room

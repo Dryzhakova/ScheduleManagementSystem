@@ -9,10 +9,17 @@ namespace WebAppsMoodle.Models
         }
         public DbSet<Teacher> Teachers { get; set; }
         public DbSet<Room> Rooms { get; set; }
-        public DbSet<Classes> Classes { get; set; } 
+        public DbSet<Classes> Classes { get; set; }
         public DbSet<ClassesDescription> ClassesDescription { get; set; }
         public DbSet<OneTimeClassDate> OneTimeClasses { get; set; }
-        public DbSet<RecurringClassDate> RecurringClasses { get; set;}
+        public DbSet<RecurringClassDate> RecurringClasses { get; set; }
 
+      /*  protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Classes>()
+           .HasOne(c => c.Teacher)
+           .WithMany(t => t.Classes)
+           .HasForeignKey(c => c.TeacherId);
+        }*/
     }
 }
