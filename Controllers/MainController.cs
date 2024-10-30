@@ -231,11 +231,10 @@ namespace WebAppsMoodle.Controllers
               .Where(c => c.TeacherId == teacherId)
               .Select(c => new
               {
-                  /* RoomNumber = c.Room.RoomNumber,
-                  TeacherName = c.Teacher.Title,
+                  /* RoomNumber = c.Room.RoomNumber, 
                   ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),
                   */
-                  TeacherId = c.TeacherId,
+                  TeacherName = c.Teacher.Username,
                   IsCanceled = c.IsCanceled
               })
               .ToListAsync();
