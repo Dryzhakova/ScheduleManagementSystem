@@ -8,8 +8,8 @@
         public string RoomId { get; set; }
         public Room Room { get; set; } // Связь с комнатой
         public bool IsCanceled { get; set; }
-       /* public string DescriptionId { get; set; }
+        public string ClassesDescriptionId { get; set; }
         public ClassesDescription ClassesDescription { get; set; } // Связь с описанием занятия
-*/
+
     }
 }

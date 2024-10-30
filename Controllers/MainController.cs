@@ -131,7 +131,7 @@ namespace WebAppsMoodle.Controllers
                 {
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
-                   // DescriptionId = classesDescription.ClassesDescriptionId,
+                    ClassesDescriptionId = classesDescription.ClassesDescriptionId,
                     IsCanceled = model.IsCanceled
                 };
 
@@ -156,7 +156,7 @@ namespace WebAppsMoodle.Controllers
                 {  
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
-                    //DescriptionId = classesDescription.ClassesDescriptionId,
+                    ClassesDescriptionId = classesDescription.ClassesDescriptionId,
                     IsCanceled = model.IsCanceled
                 };
 
@@ -207,15 +207,14 @@ namespace WebAppsMoodle.Controllers
 
             var classes = await _context.Classes
               .Include(c => c.Room) // Подключаем информацию о комнате
-              /*..Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*/
+              .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия*/
               .Where(c => c.TeacherId == teacherId)
               .Select(c => new
               {
-                  /* 
-                  ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),
-                  */
+                  
                   RoomNumber = c.Room.RoomNumber,
                   TeacherName = c.Teacher.Username,
+                  ClassTitle = c.ClassesDescription.Title,
                   IsCanceled = c.IsCanceled
               })
               .ToListAsync();
@@ -279,12 +278,12 @@ namespace WebAppsMoodle.Controllers
             // Получаем все занятия, привязанные к RoomId этой комнаты
             var classes = await _context.Classes
                 .Where(c => c.RoomId == roomId) // Используем RoomId, найденный в предыдущем запросе
-                 //.Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
+                 .Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
                  .Select(c => new
                  {  
-                    // ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault(),
                      RoomNumber = c.Room.RoomNumber,
-                     TeacherName = c.Teacher.Username
+                     TeacherName = c.Teacher.Username,
+                     ClassTitle = c.ClassesDescription.Title
                  })
                 .ToListAsync();
 

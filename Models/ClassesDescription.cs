@@ -6,6 +6,6 @@
         public string Title { get; set; }
         public string Description { get; set; }
 
-      //  public ICollection<Classes> Classes { get; set; } // Связь с сессиями занятий
+        public ICollection<Classes> Classes { get; set; } // Связь с сессиями занятий
     }
 }
