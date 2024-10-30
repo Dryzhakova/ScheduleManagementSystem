@@ -82,19 +82,18 @@ namespace WebAppsMoodle.Controllers
              return Ok(new { Token = token });*/
 
         }
-        
+
 
         [HttpPost("createClass")]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model)
         {
             var teacherId = HttpContext.Session.GetString("TeacherId");
 
-            if (string.IsNullOrEmpty(teacherId))
-            {
-                return BadRequest("Teacher ID is missing.");
-            }
+            if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
 
             var existingRoom = await _context.Rooms.SingleOrDefaultAsync(r => r.RoomNumber == model.RoomNumber);
+            //if (existingRoom == null) { return BadRequest("Room does not exist."); } проверка сушествует ли уже в такой день и врем€ зан€тие если нет создаем 
+
             Room newRoom;
 
             //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! можно только одну такую комнату Їксепшин если врем€ в такой комнате уже зан€то с которой его хот€т зан€ть
@@ -124,6 +123,7 @@ namespace WebAppsMoodle.Controllers
             };
 
             await _context.ClassesDescription.AddAsync(classesDescription); // ƒобавл€ем описание зан€ти€ в контекст
+            await _context.SaveChangesAsync(); // —охран€ем изменени€ в базе данных
 
             if (model.IsOneTimeClass)
             {
@@ -164,7 +164,7 @@ namespace WebAppsMoodle.Controllers
                 };
 
                 await _context.Classes.AddAsync(newClass);
-                await _context.SaveChangesAsync();
+               
 
                 // «апись дл€ повтор€ющегос€ зан€ти€
                 var recurringClassDate = new RecurringClassDate
@@ -179,23 +179,24 @@ namespace WebAppsMoodle.Controllers
                 };
 
                 await _context.RecurringClasses.AddAsync(recurringClassDate);
-                await _context.SaveChangesAsync();
+              
             }
-           /* else
+            await _context.SaveChangesAsync();
+            /*else
+        {
+            // —оздаем обычное зан€тие
+            var newClass = new Classes
             {
-                // —оздаем обычное зан€тие
-                var newClass = new Classes
-                {
-                    ClassesId = Guid.NewGuid().ToString(), // √енерируем новый ID дл€ зан€ти€
-                    TeacherId = teacherId,
-                    RoomId = newRoom.RoomId,
-                    IsCanceled = model.IsCanceled
-                };
+                ClassesId = Guid.NewGuid().ToString(), // √енерируем новый ID дл€ зан€ти€
+                TeacherId = teacherId,
+                RoomId = newRoom.RoomId,
+                IsCanceled = model.IsCanceled
+            };
 
-                await _context.Classes.AddAsync(newClass);
-                await _context.SaveChangesAsync(); // —охран€ем изменени€ в базе данных
+            await _context.Classes.AddAsync(newClass);
+            await _context.SaveChangesAsync(); // —охран€ем изменени€ в базе данных
 
-            }*/
+        }*/
             return Ok(new { Message = "Class and Room created successfully." });
         }
 
@@ -206,10 +207,7 @@ namespace WebAppsMoodle.Controllers
             // ѕолучаем TeacherId из сессии
             var teacherId = HttpContext.Session.GetString("TeacherId");
 
-            if (string.IsNullOrEmpty(teacherId))
-            {
-                return BadRequest("Teacher ID is missing.");
-            }
+            if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
 
             //!!!!!!!!!!!!!!! сделать вывод названи€, описани€ и кабинет, IsCanceled or not
             // ѕолучаем все зан€ти€ дл€ данного преподавател€
@@ -219,12 +217,17 @@ namespace WebAppsMoodle.Controllers
                 .Where(c => c.TeacherId == teacherId)
                 .ToListAsync();
 
-            if (classes.Count == 0)
-            {
-                return NotFound("No classes found for this teacher.");
-            }
+            if (classes.Count == 0)return NotFound("No classes found for this teacher.");
 
-            return Ok(classes);
+            var recurringClasses = await _context.RecurringClasses
+                .Where(rc => classes.Select(c => c.ClassesId).Contains(rc.ClassesId))
+                .ToListAsync();
+
+            var oneTimeClasses = await _context.OneTimeClasses
+                .Where(oc => classes.Select(c => c.ClassesId).Contains(oc.ClassesId))
+                .ToListAsync();
+
+            return Ok(new { Classes = classes, RecurringClasses = recurringClasses, OneTimeClasses = oneTimeClasses });
         }
 
         // Endpoint to get all classes for a specific room
