@@ -47,7 +47,7 @@ namespace WebAppsMoodle.Controllers
             {
                 Username = model.Username,
                 Password = model.Password,
-                Title = ""
+                Title = model.Title
             };
 
             _context.Teachers.Add(newTeacher);
@@ -199,8 +199,19 @@ namespace WebAppsMoodle.Controllers
         [HttpGet("teacher/all")]
         public async Task<IActionResult> GetAllTeacherData()
         {
+            // Получаем все кабинеты с полями RoomId и RoomNumber
+            var teacher = await _context.Teachers
+               .Select(r => new
+               {
+                   TeacherId = r.TeacherId,
+                   TeacherName = r.Username,
+                   TeacherTitle =  r.Title
+               })
+               .ToListAsync();
 
-            // Получаем всех учителей
+            return Ok(teacher);
+
+          /*  // Получаем всех учителей
             var teachers = await _context.Teachers
                 .Select(t => new
                 {
@@ -238,7 +249,7 @@ namespace WebAppsMoodle.Controllers
                 };
             });
 
-            return Ok(result);
+            return Ok(result);*/
         }
         // Endpoint to get all classes for a specific teacher
         [HttpGet("teacher/room/all")]
