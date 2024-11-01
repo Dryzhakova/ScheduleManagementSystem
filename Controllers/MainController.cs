@@ -195,7 +195,51 @@ namespace WebAppsMoodle.Controllers
         }*/
             return Ok(new { Message = "Class and Room created successfully.", ClassesID = newClass.ClassesId });
         }
+        // Endpoint to get all classes for a specific teacher
+        [HttpGet("teacher/all")]
+        public async Task<IActionResult> GetAllTeacherData()
+        {
 
+            // Получаем всех учителей
+            var teachers = await _context.Teachers
+                .Select(t => new
+                {
+                    TeacherId = t.TeacherId,
+                    TeacherName = t.Username,
+                    ClassTitle = (string)null // Изначально без данных
+                })
+                .ToListAsync();
+
+            // Получаем классы с описанием и преподавателем
+            var teacherClasses = await _context.Classes
+                .Include(c => c.ClassesDescription)
+                .Include(c => c.Teacher)
+                .Select(c => new
+                {
+                    TeacherId = c.Teacher.TeacherId,
+                    TeacherName = c.Teacher.Username,
+                    ClassTitle = c.ClassesDescription.Title
+                })
+                .ToListAsync();
+
+            // Добавляем информацию о классах к учителям
+            var result = teachers.Select(t =>
+            {
+                var classes = teacherClasses
+                    .Where(tc => tc.TeacherId == t.TeacherId)
+                    .Select(tc => tc.ClassTitle)
+                    .ToList();
+
+                return new
+                {
+                    t.TeacherId,
+                    t.TeacherName,
+                    ClassTitles = classes.Count > 0 ? classes : new List<string> { null }
+                };
+            });
+
+            return Ok(result);
+        }
         // Endpoint to get all classes for a specific teacher
         [HttpGet("teacher/room/all")]
         public async Task<IActionResult> GetClassesForTeacher()
@@ -256,6 +300,62 @@ namespace WebAppsMoodle.Controllers
 
             return Ok(new { Classes = classes/*, RecurringClasses = recurringClasses, OneTimeClasses = oneTimeClasses */});
         }
+       
+        [HttpGet("room/all")]
+        public async Task<IActionResult> GetAllRoomsData()
+        {
+            // Получаем все кабинеты с полями RoomId и RoomNumber
+             var rooms = await _context.Rooms
+                .Select(r => new
+                {
+                    RoomId = r.RoomId,
+                    RoomNumber = r.RoomNumber
+                })
+                .ToListAsync();
+
+             return Ok(rooms);
+
+            /* // Получаем все кабинеты
+    var rooms = await _context.Rooms
+        .Select(r => new
+        {
+            RoomId = r.RoomId,
+            RoomNumber = r.RoomNumber,
+            ClassTitle = (string)null // Изначально пустой заголовок для кабинетов без классов
+        })
+        .ToListAsync();
+
+    // Получаем занятия, связанные с кабинетами
+    var roomClasses = await _context.Classes
+        .Include(c => c.ClassesDescription)
+        .Include(c => c.Room)
+        .Select(c => new
+        {
+            RoomId = c.Room.RoomId,
+            RoomNumber = c.Room.RoomNumber,
+            ClassTitle = c.ClassesDescription.Title
+        })
+        .ToListAsync();
+
+    // Добавляем информацию о классах к кабинетам
+    var result = rooms.Select(r => 
+    {
+        var classes = roomClasses
+            .Where(rc => rc.RoomId == r.RoomId)
+            .Select(rc => rc.ClassTitle)
+            .ToList();
+
+        return new
+        {
+            r.RoomId,
+            r.RoomNumber,
+            ClassTitles = classes.Count > 0 ? classes : new List<string> { null }
+        };
+    });
+
+    return Ok(result);*/
+
+        }
 
         // Endpoint to get all classes for a specific room
         [HttpGet("classes/room/id")]
@@ -280,10 +380,12 @@ namespace WebAppsMoodle.Controllers
                 .Where(c => c.RoomId == roomId) // Используем RoomId, найденный в предыдущем запросе
                  .Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
                  .Select(c => new
-                 {  
+                 {
+                     //ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault()
                      RoomNumber = c.Room.RoomNumber,
                      TeacherName = c.Teacher.Username,
-                     ClassTitle = c.ClassesDescription.Title
+                     ClassTitle = c.ClassesDescription.Title,
+                     RoomDescription = c.ClassesDescription.Description  
                  })
                 .ToListAsync();
 

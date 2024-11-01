@@ -7,8 +7,10 @@ namespace WebAppsMoodle.Models
         public string OneTimeClassDateId { get; set; } = Guid.NewGuid().ToString();
         public string ClassesId { get; set; }
         public DateTime OneTimeClassFullDate { get; set; }
+
         /* public DateTime OneTimeClassStartTime { get; set; }
          public DateTime OneTimeClassEndTime { get; set; }*/
+
         // Для хранения времени, установим значение времени в 00:00:00 для времени начала и окончания
         public TimeSpan OneTimeClassStartTime { get; set; }
         public TimeSpan OneTimeClassEndTime { get; set; }
