@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebAppsMoodle.Models;
 
@@ -10,9 +11,11 @@ using WebAppsMoodle.Models;
 namespace WebAppsMoodle.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20241103143903_AddClassDetails4")]
+    partial class AddClassDetails4
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.10");
@@ -117,8 +120,6 @@ namespace WebAppsMoodle.Migrations
 
                     b.HasKey("RecurringClassDateId");
 
-                    b.HasIndex("ClassesId");
-
                     b.ToTable("RecurringClasses");
                 });
 
@@ -194,20 +195,9 @@ namespace WebAppsMoodle.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("WebAppsMoodle.Models.RecurringClassDate", b =>
-                {
-                    b.HasOne("WebAppsMoodle.Models.Classes", null)
-                        .WithMany("RecurringClassDates")
-                        .HasForeignKey("ClassesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("WebAppsMoodle.Models.Classes", b =>
                 {
                     b.Navigation("OneTimeClassDates");
-
-                    b.Navigation("RecurringClassDates");
                 });
 
             modelBuilder.Entity("WebAppsMoodle.Models.ClassesDescription", b =>

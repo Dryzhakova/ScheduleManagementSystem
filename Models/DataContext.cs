@@ -30,6 +30,18 @@ namespace WebAppsMoodle.Models
            .HasOne(c => c.ClassesDescription)
            .WithMany(d => d.Classes)
            .HasForeignKey(c => c.ClassesDescriptionId);
+
+            // Связь Classes и OneTimeClassDate
+            modelBuilder.Entity<Classes>()
+            .HasMany(c => c.OneTimeClassDates) // Одно занятие может иметь много дат
+            .WithOne() // Указывает, что OneTimeClassDate не имеет навигационного свойства обратно к Classes
+            .HasForeignKey(с => с.ClassesId);
+
+            modelBuilder.Entity<Classes>()
+           .HasMany(c => c.RecurringClassDates) 
+           .WithOne() 
+           .HasForeignKey(c => c.ClassesId);
+
         }
     }
 }
