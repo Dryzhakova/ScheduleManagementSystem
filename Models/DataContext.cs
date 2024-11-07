@@ -37,6 +37,8 @@ namespace WebAppsMoodle.Models
             .WithOne() // Указывает, что OneTimeClassDate не имеет навигационного свойства обратно к Classes
             .HasForeignKey(с => с.ClassesId);
 
+
+
         }
     }
 }

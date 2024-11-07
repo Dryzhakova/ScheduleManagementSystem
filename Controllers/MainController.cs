@@ -468,8 +468,16 @@ namespace WebAppsMoodle.Controllers
             var result = classes.Select(c => new
             {
                 TeacherName = c.Classes.Teacher.Username, // Имя преподавателя
+                TeacherId = c.Classes.Teacher.TeacherId,
                 RoomNumber = c.Classes.Room.RoomNumber, // Номер кабинета
-                ClassTitle = c.Classes.ClassesDescription.Title // Название предмета
+                RoomId = c.Classes.Room.RoomId,
+                ClassTitle = c.Classes.ClassesDescription.Title, // Название предмета
+                isEveryWeek = c.IsEveryWeek,
+                IsEven = c.IsEven,
+                recurrenceDay = c.RecurrenceDay,
+                recurrenceStartTime = c.RecurrenceStartTime,
+                recurrenceEndTime = c.RecurrenceEndTime
+
             }).ToList();
 
             // Возвращаем результат
