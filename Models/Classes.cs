@@ -7,7 +7,7 @@
         public Teacher Teacher { get; set; } // Связь с Teacher
         public string RoomId { get; set; }
         public Room Room { get; set; } // Связь с Room
-        public bool IsCanceled { get; set; }
+        public bool IsCanceled { get; set; } = false;
         public string ClassesDescriptionId { get; set; }
         public ClassesDescription ClassesDescription { get; set; } // Связь с ClassesDescription
 

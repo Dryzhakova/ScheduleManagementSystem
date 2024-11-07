@@ -3,7 +3,7 @@
     public class CreateClassRequest
     {
         public string RoomNumber { get; set; } // Номер комнаты
-        public bool IsCanceled { get; set; } // Флаг отмены занятия
+      //  public bool IsCanceled { get; set; } // Флаг отмены занятия
         //Description
         public string Title { get; set; } // Заголовок занятия
         public string Description { get; set; } // Описание занятия

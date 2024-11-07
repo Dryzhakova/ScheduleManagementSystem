@@ -132,8 +132,7 @@ namespace WebAppsMoodle.Controllers
                 {
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
-                    ClassesDescriptionId = classesDescription.ClassesDescriptionId,
-                    IsCanceled = model.IsCanceled
+                    ClassesDescriptionId = classesDescription.ClassesDescriptionId
                 };
 
                 await _context.Classes.AddAsync(newClass);
@@ -143,7 +142,7 @@ namespace WebAppsMoodle.Controllers
                 var oneTimeClassDate = new OneTimeClassDate
                 {
                     ClassesId = newClass.ClassesId,
-                    OneTimeClassFullDate = model.OneTimeClassFullDate,
+                    OneTimeClassFullDate = model.OneTimeClassFullDate.Date,
                     OneTimeClassStartTime = model.OneTimeClassStartTime.ToTimeSpan(),
                     OneTimeClassEndTime = model.OneTimeClassEndTime.ToTimeSpan()
                 };
@@ -157,8 +156,7 @@ namespace WebAppsMoodle.Controllers
                 {  
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
-                    ClassesDescriptionId = classesDescription.ClassesDescriptionId,
-                    IsCanceled = model.IsCanceled
+                    ClassesDescriptionId = classesDescription.ClassesDescriptionId
                 };
 
                 await _context.Classes.AddAsync(newClass);
@@ -581,7 +579,7 @@ namespace WebAppsMoodle.Controllers
                         (!r.IsEven && today.Day % 2 != 0)) // Проверка на четность
                     && (today.TimeOfDay >= r.RecurrenceStartTime && today.TimeOfDay <= r.RecurrenceEndTime)) // Проверка по времени
                 )
-
+                //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! checkout
                /* Фильтрация по дню недели: Мы проверяем, есть ли у класса запись о повторяющемся занятии на заданный день недели(r.RecurrenceDay == dayOfWeek).
                 Четность: Используя r.IsEveryWeek, r.IsEven, и проверяя, четный ли сегодня день(today.Day % 2 == 0), мы определяем, является ли класс повторяющимся 
                 для этого дня.
