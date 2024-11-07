@@ -78,7 +78,7 @@ namespace WebAppsMoodle.Migrations
                     b.Property<TimeSpan>("OneTimeClassEndTime")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("OneTimeClassFullDate")
+                    b.Property<DateTime?>("OneTimeClassFullDate")
                         .HasColumnType("TEXT");
 
                     b.Property<TimeSpan>("OneTimeClassStartTime")
@@ -100,6 +100,10 @@ namespace WebAppsMoodle.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ClassesId1")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("IsEven")
                         .HasColumnType("INTEGER");
 
@@ -118,6 +122,8 @@ namespace WebAppsMoodle.Migrations
                     b.HasKey("RecurringClassDateId");
 
                     b.HasIndex("ClassesId");
+
+                    b.HasIndex("ClassesId1");
 
                     b.ToTable("RecurringClasses");
                 });
@@ -201,6 +207,14 @@ namespace WebAppsMoodle.Migrations
                         .HasForeignKey("ClassesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("WebAppsMoodle.Models.Classes", "Classes")
+                        .WithMany()
+                        .HasForeignKey("ClassesId1")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classes");
                 });
 
             modelBuilder.Entity("WebAppsMoodle.Models.Classes", b =>

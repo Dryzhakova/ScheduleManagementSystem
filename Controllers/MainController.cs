@@ -445,23 +445,35 @@ namespace WebAppsMoodle.Controllers
                 return BadRequest("Invalid day of the week. Please provide a number between 0 (Sunday) and 6 (Saturday).");
             }
 
-            // Приводим `int` к `DayOfWeek`
+            // Приводим int к DayOfWeek
             DayOfWeek selectedDay = (DayOfWeek)dayOfWeek;
 
-            // Получаем все занятия для указанного дня недели
             var classes = await _context.RecurringClasses
-                .Where(c => c.RecurrenceDay == selectedDay) // Сравниваем с типом `DayOfWeek`
-                .ToListAsync();
-
+           .Where(c => c.RecurrenceDay == selectedDay)
+           .Include(c => c.Classes) // Загружаем связанные классы
+               .ThenInclude(c => c.Teacher) // Загружаем преподавателя
+           .Include(c => c.Classes) // Загружаем связанные классы
+               .ThenInclude(c => c.Room)    // Загружаем кабинет
+           .Include(c => c.Classes) // Загружаем связанные классы
+               .ThenInclude(c => c.ClassesDescription) // Загружаем описание занятия
+           .ToListAsync();
 
             // Проверяем, есть ли занятия для данного дня недели
             if (classes.Count == 0)
             {
-                return NotFound($"No classes found for the specified day of the week: {dayOfWeek}.");
+                return NotFound($"No classes found for the specified day of the week: {selectedDay}.");
             }
 
-            // Возвращаем список занятий
-            return Ok(classes);
+            // Создаем результат с нужными данными
+            var result = classes.Select(c => new
+            {
+                TeacherName = c.Classes.Teacher.Username, // Имя преподавателя
+                RoomNumber = c.Classes.Room.RoomNumber, // Номер кабинета
+                ClassTitle = c.Classes.ClassesDescription.Title // Название предмета
+            }).ToList();
+
+            // Возвращаем результат
+            return Ok(result);
         }
 
         [HttpGet("classes/date/AllClassesByDate")]
