@@ -1,4 +1,7 @@
-﻿using System.Data;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Data;
+using System.Text.Json.Serialization;
+
 
 namespace WebAppsMoodle.Models
 {
@@ -6,7 +9,9 @@ namespace WebAppsMoodle.Models
     {
         public string OneTimeClassDateId { get; set; } = Guid.NewGuid().ToString();
         public string ClassesId { get; set; }
-        public DateTime OneTimeClassFullDate { get; set; }
+        
+        [DataType(DataType.Date)] // Позволяет вводить только дату
+        public DateTime? OneTimeClassFullDate { get ; set; } = null;
 
         /* public DateTime OneTimeClassStartTime { get; set; }
          public DateTime OneTimeClassEndTime { get; set; }*/

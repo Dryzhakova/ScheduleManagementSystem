@@ -1,4 +1,6 @@
-﻿namespace WebAppsMoodle.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace WebAppsMoodle.Models
 {
     public class CreateClassRequest
     {
@@ -10,7 +12,9 @@
 
         //OneTimeClass
         public bool IsOneTimeClass { get; set; } // Указывает, является ли занятие одноразовым
-        public DateTime OneTimeClassFullDate { get; set; } // Дата, если занятие одноразовое
+
+        [DataType(DataType.Date)] // Позволяет вводить только дату
+        public DateTime? OneTimeClassFullDate { get; set; } = null;// Дата, если занятие одноразовое 
         public TimeSpanModel OneTimeClassStartTime { get; set; } // Время начала, если занятие одноразовое
         public TimeSpanModel OneTimeClassEndTime { get; set; } // Время окончания, если занятие одноразовое
 

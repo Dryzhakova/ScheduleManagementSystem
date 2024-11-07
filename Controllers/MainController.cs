@@ -87,6 +87,7 @@ namespace WebAppsMoodle.Controllers
         [HttpPost("createClass")]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model)
         {
+
             var teacherId = HttpContext.Session.GetString("TeacherId");
 
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
@@ -124,9 +125,8 @@ namespace WebAppsMoodle.Controllers
             await _context.ClassesDescription.AddAsync(classesDescription); // Добавляем описание занятия в контекст
             await _context.SaveChangesAsync(); // Сохраняем изменения в базе данных
 
-            if (model.IsOneTimeClass)
+            if (model.IsOneTimeClass && model.OneTimeClassFullDate.HasValue)
             {
-
                 // Создаем новое занятие
                 newClass = new Classes
                 {
@@ -142,7 +142,7 @@ namespace WebAppsMoodle.Controllers
                 var oneTimeClassDate = new OneTimeClassDate
                 {
                     ClassesId = newClass.ClassesId,
-                    OneTimeClassFullDate = model.OneTimeClassFullDate.Date,
+                    OneTimeClassFullDate = model.OneTimeClassFullDate.Value,
                     OneTimeClassStartTime = model.OneTimeClassStartTime.ToTimeSpan(),
                     OneTimeClassEndTime = model.OneTimeClassEndTime.ToTimeSpan()
                 };
@@ -482,7 +482,7 @@ namespace WebAppsMoodle.Controllers
 
             // Фильтрация одноразовых занятий
             var oneTimeClasses = classes
-                .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate.Date == date.Date)) // Фильтруем по дате
+                .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate?.Date == date.Date)) // Фильтруем по дате
                 .Select(c => new
                 {
                     ClassId = c.ClassesId,
@@ -490,8 +490,8 @@ namespace WebAppsMoodle.Controllers
                     TeacherName = c.Teacher.Username,
                     ClassType = "OneTime", // Указываем тип занятия
                     OneTimeClassFullDate = c.OneTimeClassDates
-                        .Where(o => o.OneTimeClassFullDate.Date == date.Date)
-                        .Select(o => o.OneTimeClassFullDate.ToString("yyyy-MM-dd"))
+                        .Where(o => o.OneTimeClassFullDate?.Date == date.Date)
+                        .Select(o => o.OneTimeClassFullDate?.ToString("yyyy-MM-dd"))
                 });
 
             //!!!!!!!!!!!!!!!!!!!!!!! проверка повторяющихся IsEven и IsEveryWeek выводит ли верные даты
@@ -535,15 +535,15 @@ namespace WebAppsMoodle.Controllers
                 .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия
                 .Include(c => c.Teacher) // Подключаем информацию о преподавателе
                 .Include(c => c.OneTimeClassDates) // Подключаем информацию о датах занятий
-                .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate.Date == date.Date)) // Фильтруем по дате
+                .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate.HasValue && o.OneTimeClassFullDate.Value.Date == date.Date)) // Фильтруем по дате
                 .Select(c => new
                 {
                     ClassId = c.ClassesId,
                     ClassTitle = c.ClassesDescription.Title,
                     TeacherName = c.Teacher.Username,
                     OneTimeClassFullDate = c.OneTimeClassDates
-                        .Where(o => o.OneTimeClassFullDate.Date == date.Date)
-                        .Select(o => o.OneTimeClassFullDate.ToString("yyyy-MM-dd"))
+                        .Where(o => o.OneTimeClassFullDate.HasValue && o.OneTimeClassFullDate.Value.Date == date.Date)
+                        .Select(o => o.OneTimeClassFullDate.Value.ToString("yyyy-MM-dd"))
                 })
                 .ToListAsync();
 
