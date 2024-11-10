@@ -1,1 +1,1 @@
-# WebAppsMoodle
+# Interactive Academic Schedule Management System
