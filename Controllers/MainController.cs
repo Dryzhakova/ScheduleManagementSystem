@@ -13,8 +13,8 @@ namespace WebAppsMoodle.Controllers
     [ApiController]
     [Route("[controller]")]
     public class MainController : ControllerBase
-
     { 
+
 
 
 
@@ -560,8 +560,7 @@ namespace WebAppsMoodle.Controllers
               int daysDifference = (date - semesterStartDate).Days;
               bool isCurrentWeekEven = (daysDifference / 7) % 2 == 0;*/
             int daysDifference = (date - semesterStartDate).Days;
-            int weekNumber = (daysDifference / 7) + 1; // Начинаем отсчет с 1
-            bool isCurrentWeekEven = weekNumber % 2 == 0; // Первая неделя — четная
+            bool isCurrentWeekEven = ((daysDifference / 7) % 2) == 0;
 
             // Получаем номер дня недели для заданной даты
             var dayOfWeek = date.DayOfWeek;
