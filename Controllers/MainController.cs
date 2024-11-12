@@ -450,12 +450,12 @@ namespace WebAppsMoodle.Controllers
 
             var classes = await _context.RecurringClasses
            .Where(c => c.RecurrenceDay == selectedDay)
-           .Include(c => c.Classes) // Загружаем связанные классы
-               .ThenInclude(c => c.Teacher) // Загружаем преподавателя
-           .Include(c => c.Classes) // Загружаем связанные классы
-               .ThenInclude(c => c.Room)    // Загружаем кабинет
-           .Include(c => c.Classes) // Загружаем связанные классы
-               .ThenInclude(c => c.ClassesDescription) // Загружаем описание занятия
+           .Include(c => c.Classes) 
+               .ThenInclude(c => c.Teacher) 
+           .Include(c => c.Classes) 
+               .ThenInclude(c => c.Room) 
+           .Include(c => c.Classes)
+               .ThenInclude(c => c.ClassesDescription) 
            .ToListAsync();
 
             // Проверяем, есть ли занятия для данного дня недели
@@ -467,11 +467,11 @@ namespace WebAppsMoodle.Controllers
             // Создаем результат с нужными данными
             var result = classes.Select(c => new
             {
-                TeacherName = c.Classes.Teacher.Username, // Имя преподавателя
+                TeacherName = c.Classes.Teacher.Username, 
                 TeacherId = c.Classes.Teacher.TeacherId,
-                RoomNumber = c.Classes.Room.RoomNumber, // Номер кабинета
+                RoomNumber = c.Classes.Room.RoomNumber, 
                 RoomId = c.Classes.Room.RoomId,
-                ClassTitle = c.Classes.ClassesDescription.Title, // Название предмета
+                ClassTitle = c.Classes.ClassesDescription.Title, 
                 isEveryWeek = c.IsEveryWeek,
                 IsEven = c.IsEven,
                 recurrenceDay = c.RecurrenceDay,
