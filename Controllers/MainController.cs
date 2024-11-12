@@ -484,59 +484,129 @@ namespace WebAppsMoodle.Controllers
             return Ok(result);
         }
 
+        /*     [HttpGet("classes/date/AllClassesByDate")]
+             public async Task<IActionResult> GetAllClassesByDate(DateTime date)
+             {
+                 // Получаем номер дня недели для заданной даты
+                 var dayOfWeek = date.DayOfWeek;
+
+                 var today = DateTime.Today;
+
+                 // Загружаем все классы с их данными
+                 var classes = await _context.Classes
+                     .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия
+                     .Include(c => c.Teacher) // Подключаем информацию о преподавателе
+                     .Include(c => c.OneTimeClassDates) // Подключаем информацию о одноразовых датах занятий
+                     .Include(c => c.RecurringClassDates) // Подключаем информацию о повторяющихся занятиях
+                     .ToListAsync();
+
+                 // Фильтрация одноразовых занятий
+                 var oneTimeClasses = classes
+                     .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate?.Date == date.Date)) // Фильтруем по дате
+                     .Select(c => new
+                     {
+                         ClassId = c.ClassesId,
+                         ClassTitle = c.ClassesDescription.Title,
+                         TeacherName = c.Teacher.Username,
+                         ClassType = "OneTime", // Указываем тип занятия
+                         OneTimeClassFullDate = c.OneTimeClassDates
+                             .Where(o => o.OneTimeClassFullDate?.Date == date.Date)
+                             .Select(o => o.OneTimeClassFullDate?.ToString("yyyy-MM-dd"))
+                     });
+
+                 //!!!!!!!!!!!!!!!!!!!!!!! проверка повторяющихся IsEven и IsEveryWeek выводит ли верные даты
+                 // Фильтрация повторяющихся занятий
+                 var filteredClasses = classes
+                     .Where(c => c.RecurringClassDates.Any(r => r.RecurrenceDay == dayOfWeek
+                         && (r.IsEveryWeek ||
+                             (r.IsEven && today.Day % 2 == 0) ||
+                             (!r.IsEven && today.Day % 2 != 0)) // Проверка на четность
+                         && (today.TimeOfDay >= r.RecurrenceStartTime && today.TimeOfDay <= r.RecurrenceEndTime)) // Проверка по времени
+                     )
+                     .Select(c => new
+                     {
+                         ClassId = c.ClassesId,
+                         ClassTitle = c.ClassesDescription.Title,
+                         TeacherName = c.Teacher.Username,
+                         ClassType = "Recurring", // Указываем тип занятия
+                         RecurrenceDay = c.RecurringClassDates
+                             .Where(r => r.RecurrenceDay == dayOfWeek)
+                             .Select(r => r.RecurrenceDay.ToString()) // Для получения имени дня недели
+                             .FirstOrDefault()
+                     });
+
+                 // Объединяем результаты
+                 var allClasses = oneTimeClasses.Cast<object>().Concat(filteredClasses.Cast<object>());
+
+                 if (!allClasses.Any())
+                 {
+                     return NotFound("No classes found for the specified date.");
+                 }
+
+                 return Ok(allClasses);
+             }*/
+
         [HttpGet("classes/date/AllClassesByDate")]
         public async Task<IActionResult> GetAllClassesByDate(DateTime date)
         {
+            // Определяем начало семестра и его четность
+            DateTime semesterStartDate = new DateTime(2024, 10, 1);
+            DateTime semesterEndDate = new DateTime(2025, 2, 28);
+
+            /*  // Определяем четность текущей недели относительно начала семестра
+              int daysDifference = (date - semesterStartDate).Days;
+              bool isCurrentWeekEven = (daysDifference / 7) % 2 == 0;*/
+            int daysDifference = (date - semesterStartDate).Days;
+            int weekNumber = (daysDifference / 7) + 1; // Начинаем отсчет с 1
+            bool isCurrentWeekEven = weekNumber % 2 == 0; // Первая неделя — четная
+
             // Получаем номер дня недели для заданной даты
             var dayOfWeek = date.DayOfWeek;
 
-            var today = DateTime.Today;
-
             // Загружаем все классы с их данными
             var classes = await _context.Classes
-                .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия
-                .Include(c => c.Teacher) // Подключаем информацию о преподавателе
-                .Include(c => c.OneTimeClassDates) // Подключаем информацию о одноразовых датах занятий
-                .Include(c => c.RecurringClassDates) // Подключаем информацию о повторяющихся занятиях
+                .Include(c => c.ClassesDescription)
+                .Include(c => c.Teacher)
+                .Include(c => c.OneTimeClassDates)
+                .Include(c => c.RecurringClassDates)
                 .ToListAsync();
 
             // Фильтрация одноразовых занятий
             var oneTimeClasses = classes
-                .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate?.Date == date.Date)) // Фильтруем по дате
+                .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate?.Date == date.Date))
                 .Select(c => new
                 {
                     ClassId = c.ClassesId,
                     ClassTitle = c.ClassesDescription.Title,
                     TeacherName = c.Teacher.Username,
-                    ClassType = "OneTime", // Указываем тип занятия
+                    ClassType = "OneTime",
                     OneTimeClassFullDate = c.OneTimeClassDates
                         .Where(o => o.OneTimeClassFullDate?.Date == date.Date)
                         .Select(o => o.OneTimeClassFullDate?.ToString("yyyy-MM-dd"))
                 });
 
-            //!!!!!!!!!!!!!!!!!!!!!!! проверка повторяющихся IsEven и IsEveryWeek выводит ли верные даты
             // Фильтрация повторяющихся занятий
-            var filteredClasses = classes
-                .Where(c => c.RecurringClassDates.Any(r => r.RecurrenceDay == dayOfWeek
-                    && (r.IsEveryWeek ||
-                        (r.IsEven && today.Day % 2 == 0) ||
-                        (!r.IsEven && today.Day % 2 != 0)) // Проверка на четность
-                    && (today.TimeOfDay >= r.RecurrenceStartTime && today.TimeOfDay <= r.RecurrenceEndTime)) // Проверка по времени
-                )
+            var recurringClasses = classes
+                .Where(c => c.RecurringClassDates.Any(r =>
+                    r.RecurrenceDay == dayOfWeek
+                    && (r.IsEveryWeek || r.IsEven == isCurrentWeekEven)  // Проверка на каждую неделю или четность недели
+                    && date.TimeOfDay >= r.RecurrenceStartTime
+                    && date.TimeOfDay <= r.RecurrenceEndTime
+                ))
                 .Select(c => new
                 {
                     ClassId = c.ClassesId,
                     ClassTitle = c.ClassesDescription.Title,
                     TeacherName = c.Teacher.Username,
-                    ClassType = "Recurring", // Указываем тип занятия
+                    ClassType = "Recurring",
                     RecurrenceDay = c.RecurringClassDates
                         .Where(r => r.RecurrenceDay == dayOfWeek)
-                        .Select(r => r.RecurrenceDay.ToString()) // Для получения имени дня недели
+                        .Select(r => r.RecurrenceDay.ToString())
                         .FirstOrDefault()
                 });
 
             // Объединяем результаты
-            var allClasses = oneTimeClasses.Cast<object>().Concat(filteredClasses.Cast<object>());
+            var allClasses = oneTimeClasses.Cast<object>().Concat(recurringClasses.Cast<object>());
 
             if (!allClasses.Any())
             {
