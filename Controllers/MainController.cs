@@ -375,7 +375,7 @@ namespace WebAppsMoodle.Controllers
                 TeacherId = checkTeacherId.TeacherId,
                 IsCanceled = c.IsCanceled,
 
-
+                //true false
               RecurringClasses = c.RecurringClassDates.Select(r => new
                 {
                     RecurrenceDay = r.RecurrenceDay,
