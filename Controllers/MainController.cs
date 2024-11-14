@@ -84,12 +84,18 @@ namespace WebAppsMoodle.Controllers
 
 
         [HttpPost("createClass")]
-        public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model)
+        public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model, string teacherId)
         {
 
-            var teacherId = HttpContext.Session.GetString("TeacherId");
+           // var teacherId = HttpContext.Session.GetString("TeacherId");
 
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
+
+            var checkTeacherId = await _context.Teachers
+             .AsNoTracking()
+             .SingleOrDefaultAsync(r => r.TeacherId == teacherId);
+
+            if (checkTeacherId == null) return NotFound("Teacher ID is not found.");
 
             var existingRoom = await _context.Rooms.SingleOrDefaultAsync(r => r.RoomNumber == model.RoomNumber);
 
@@ -332,6 +338,7 @@ namespace WebAppsMoodle.Controllers
 
         /*return Ok(new { Classes = classes, RecurringClasses = recurringClasses, OneTimeClasses = oneTimeClasses});
     } */
+      
         [HttpGet("teacher/room/all")]
         public async Task<IActionResult> GetClassesForTeacher(string teacherId)
         {
@@ -364,6 +371,7 @@ namespace WebAppsMoodle.Controllers
                 RoomNumber = c.Room.RoomNumber,
                 RoomId = c.Room.RoomId,
                 TeacherName = checkTeacherId.Username,
+                TeacherTitle = checkTeacherId.Title,
                 TeacherId = checkTeacherId.TeacherId,
                 IsCanceled = c.IsCanceled,
 
@@ -534,6 +542,7 @@ namespace WebAppsMoodle.Controllers
                 RoomNumber = room.RoomNumber,
                 RoomId = room.RoomId,
                 TeacherName = c.Teacher.Username,
+                TeacherTitle = c.Teacher.Title,
                 TeacherId = c.Teacher.TeacherId,
                 IsCanceled = c.IsCanceled,
 
@@ -606,6 +615,7 @@ namespace WebAppsMoodle.Controllers
             {
                 TeacherName = c.Classes.Teacher.Username, 
                 TeacherId = c.Classes.Teacher.TeacherId,
+                TeacherTitle = c.Classes.Teacher.Title,
                 RoomNumber = c.Classes.Room.RoomNumber, 
                 RoomId = c.Classes.Room.RoomId,
                 ClassTitle = c.Classes.ClassesDescription.Title, 
@@ -768,6 +778,7 @@ namespace WebAppsMoodle.Controllers
                     ClassId = c.ClassesId,
                     ClassTitle = c.ClassesDescription.Title,
                     TeacherName = c.Teacher.Username,
+                    TeacherTitle = c.Teacher.Title,
                     OneTimeClassFullDate = c.OneTimeClassDates
                         .Where(o => o.OneTimeClassFullDate.HasValue && o.OneTimeClassFullDate.Value.Date == date.Date)
                         .Select(o => o.OneTimeClassFullDate.Value.ToString("yyyy-MM-dd"))
@@ -817,6 +828,7 @@ namespace WebAppsMoodle.Controllers
                     ClassId = c.ClassesId,
                     ClassTitle = c.ClassesDescription.Title,
                     TeacherName = c.Teacher.Username,
+                   TeacherTitle = c.Teacher.Title,
                     RecurrenceDay = c.RecurringClassDates
                         .Where(r => r.RecurrenceDay == dayOfWeek)
                         .Select(r => r.RecurrenceDay.ToString()) // Для получения имени дня недели
