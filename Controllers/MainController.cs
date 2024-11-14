@@ -505,62 +505,63 @@ namespace WebAppsMoodle.Controllers
 
         // Endpoint to get all classes for a specific room
         [HttpGet("classes/room/id")]
-        public async Task<IActionResult> GetClassesForRoom(string roomNumber)
+        public async Task<IActionResult> GetClassesForRoom(string roomId)
         {
-            var roomId = await GetRoomIdByRoomNumberAsync(roomNumber);
-            // Сначала проверяем, существует ли комната с данным номером
+            // var roomId = await GetRoomIdByRoomNumberAsync(roomNumber);
+            if (string.IsNullOrEmpty(roomId)) return BadRequest("Room ID is missing.");
+
             var room = await _context.Rooms
-                .AsNoTracking()  // Убираем отслеживание для оптимизации запроса
-                .SingleOrDefaultAsync(r => r.RoomNumber == roomNumber);
+                .AsNoTracking()
+                .SingleOrDefaultAsync(r => r.RoomId == roomId);
             Console.WriteLine(room);
 
-            // Если комната не найдена, возвращаем сообщение об ошибке
-            if (room == null)
-            {
-                return BadRequest("Room does not exist.");
-            }
+            if (room == null) return BadRequest("Room not found.");
 
-
-            // Получаем все занятия, привязанные к RoomId этой комнаты
             var classes = await _context.Classes
-                .Where(c => c.RoomId == roomId) // Используем RoomId, найденный в предыдущем запросе
-                 .Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
-                 .Select(c => new
-                 {
-                     //ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault()
-                     RoomNumber = c.Room.RoomNumber,
-                     TeacherName = c.Teacher.Username,
-                     ClassTitle = c.ClassesDescription.Title,
-                     RoomDescription = c.ClassesDescription.Description
-                 })
-                .ToListAsync();
+              .Include(c => c.Teacher)
+              .Include(c => c.ClassesDescription)
+              .Include(c => c.OneTimeClassDates)
+              .Include(c => c.RecurringClassDates)
+              .Where(c => c.RoomId == roomId)
+              .ToListAsync();
 
-            // Проверяем, есть ли занятия для данной комнаты
-            if (classes.Count == 0)
+            if (classes.Count == 0) return NotFound("No classes found for this room.");
+
+            var result = classes.Select(c => new
             {
-                return NotFound("No classes found for this room.");
-            }
-
-            // Возвращаем список занятий
-            return Ok(classes);
-
-            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! нужно выводить по айди а не по комнате сделать проверку и вывод
-            /* var classes = await _context.Classes
-                .Where(c => c.RoomId == room.RoomId)
-                //.Include(c => c.ClassesDescription) // Подключаем описание занятия
-                //.Include(c => c.Teacher) // Подключаем информацию о преподавателе, если нужно
-                .ToListAsync();
+                ClassTitle = c.ClassesDescription.Title,
+                ClassId = c.ClassesId,
+                RoomNumber = room.RoomNumber,
+                RoomId = room.RoomId,
+                TeacherName = c.Teacher.Username,
+                TeacherId = c.Teacher.TeacherId,
+                IsCanceled = c.IsCanceled,
 
 
+                RecurringClasses = c.RecurringClassDates.Select(r => new
+                {
+                    RecurrenceDay = r.RecurrenceDay,
+                    RecurrenceStartTime = r.RecurrenceStartTime,
+                    RecurrenceEndTime = r.RecurrenceEndTime,
+                    IsEven = r.IsEven,
+                    IsEveryWeek = r.IsEveryWeek
+                }).ToList(),
 
-             if (classes.Count == 0)
-             {
-                 return NotFound("No classes found for this room.");
-             }
+                OneTimeClasses = c.OneTimeClassDates.Select(o => new
+                {
+                    OneTimeClassFullDate = o.OneTimeClassFullDate,
+                    OneTimeClassStartTime = o.OneTimeClassStartTime,
+                    OneTimeClassEndTime = o.OneTimeClassEndTime,
 
-             return Ok(classes);*/
+                }).ToList(),
+            }).ToList();
+
+            return Ok(result);
         }
-        private async Task<string> GetRoomIdByRoomNumberAsync(string roomNumber)
+
+
+        [HttpGet("GetRoomIdByRoomNumber")]
+        public async Task<string> GetRoomIdByRoomNumberAsync(string roomNumber)
         {
             // Проверяем, существует ли комната с данным номером
             var room = await _context.Rooms
