@@ -10,10 +10,16 @@ using WebAppsMoodle.Models;
 namespace WebAppsMoodle.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class MainController : ControllerBase
 
-    { 
+    {
+
+        [HttpGet("/")]
+        public IActionResult RedirectToSwagger()
+        {
+            return Redirect("/swagger");
+        }
 
         private readonly ILogger<MainController> _logger;
         private readonly DataContext _context;
