@@ -13,9 +13,21 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+var dbPath = Path.Combine(builder.Environment.ContentRootPath, "data", "DB.db");
+var backupPath = Path.Combine(builder.Environment.ContentRootPath, "data", "DB_Backup.db");
+if (!File.Exists(dbPath) && File.Exists(backupPath))
+{
+    Console.WriteLine("Копирование резервной базы данных...");
+    File.Copy(backupPath, dbPath);
+    Console.WriteLine("База данных восстановлена из резервной копии.");
+}
+
 // Add Entity Framework Core
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+     .EnableSensitiveDataLogging()
+           .LogTo(Console.WriteLine, LogLevel.Information));
+
 
 // Add services for session support
 builder.Services.AddDistributedMemoryCache();
@@ -48,11 +60,18 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+/*if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+}*/
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+    c.RoutePrefix = string.Empty; // Swagger доступен по корневому пути "/"
+});
 
 
 app.UseHttpsRedirection();
