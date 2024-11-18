@@ -86,10 +86,11 @@ namespace WebAppsMoodle.Controllers
             // Check if username already exists
             try
             {
-                if (await _context.Teachers.AnyAsync(u => u.Username != model.Username || u.Password != model.Password))
-                { return BadRequest("incorrect"); }
-                else return Ok("User login successful");
-
+                var user = await _context.Teachers.FirstOrDefaultAsync(u => u.Username == model.Password);
+                var password = await _context.Teachers.FirstOrDefaultAsync(u => u.Password == model.Username);
+                if (user == null || password == null) { return BadRequest("incorrect"); }
+                
+                return Ok("User login successful");
             }
             catch (Exception ex)
             {

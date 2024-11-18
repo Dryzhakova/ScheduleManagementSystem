@@ -12,10 +12,23 @@ builder.Services.AddSwaggerGen();
 
 // Add Entity Framework Core
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+    .EnableSensitiveDataLogging()
+           .LogTo(Console.WriteLine, LogLevel.Information));
 
 
 var app = builder.Build();
+/*
+var dbPath = Path.Combine(app.Environment.ContentRootPath, "data", "DB.db");
+Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+
+if (!File.Exists(dbPath))
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<DataContext>();
+    context.Database.EnsureCreated();
+}
+*/
 
 /*var dbPath = Path.Combine(app.Environment.ContentRootPath, "DB.db");
 Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
@@ -33,7 +46,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }*/
 
-    app.UseSwagger();
+app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
