@@ -10,7 +10,7 @@ using WebAppsMoodle.Models;
 namespace WebAppsMoodle.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("main")]
     public class MainController : ControllerBase
 
     { 
@@ -32,7 +32,32 @@ namespace WebAppsMoodle.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] TeacherRegisterModel model)
         {
-            // Check if username already exists
+            try
+            {
+                if (await _context.Teachers.AnyAsync(t => t.Username == model.Username))
+                {
+                    return BadRequest("Username already exists");
+                }
+
+                var newTeacher = new Teacher
+                {
+                    TeacherId = Guid.NewGuid().ToString(),
+                    Username = model.Username,
+                    Password = model.Password,
+                    Title = ""
+                };
+
+                _context.Teachers.Add(newTeacher);
+                await _context.SaveChangesAsync();
+
+                return Ok("User registered successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during user registration");
+                return StatusCode(500, "Internal Server Error");
+            }
+         /*   // Check if username already exists
             if (await _context.Teachers.AnyAsync(t => t.Username == model.Username))
             {
                 return BadRequest("Username already exists");
@@ -50,7 +75,7 @@ namespace WebAppsMoodle.Controllers
             _context.Teachers.Add(newTeacher);
             await _context.SaveChangesAsync();
 
-            return Ok("User registered successfully");
+            return Ok("User registered successfully");*/
         }
 
         // Login endpoint
@@ -59,11 +84,18 @@ namespace WebAppsMoodle.Controllers
         {
             // Check if user exists
             // Check if username already exists
-            if (await _context.Teachers.AnyAsync(u => u.Username != model.Username || u.Password != model.Password))
+            try
             {
-                return BadRequest("incorrect");
+                if (await _context.Teachers.AnyAsync(u => u.Username != model.Username || u.Password != model.Password))
+                { return BadRequest("incorrect"); }
+                else return Ok("User login successful");
+
             }
-            else return Ok("User login successful");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during user registration");
+                return StatusCode(500, "Internal Server Error");
+            }
 
             /* // Create JWT token
              var token = GenerateJwtToken(user);
