@@ -368,6 +368,7 @@ namespace WebAppsMoodle.Controllers
             {
                 ClassTitle = c.ClassesDescription.Title,
                 ClassId = c.ClassesId,
+                ClassDecription = c.ClassesDescription,
                 RoomNumber = c.Room.RoomNumber,
                 RoomId = c.Room.RoomId,
                 TeacherName = checkTeacherId.Username,
@@ -376,7 +377,7 @@ namespace WebAppsMoodle.Controllers
                 IsCanceled = c.IsCanceled,
 
                 //true false
-              RecurringClasses = c.RecurringClassDates.Select(r => new
+                RecurringClasses = c.RecurringClassDates.Select(r => new
                 {
                     RecurrenceDay = r.RecurrenceDay,
                     RecurrenceStartTime = r.RecurrenceStartTime,
@@ -384,7 +385,6 @@ namespace WebAppsMoodle.Controllers
                     IsEven = r.IsEven,
                     IsEveryWeek = r.IsEveryWeek
                 }).ToList(),
-
                  OneTimeClasses = c.OneTimeClassDates.Select(o => new
                 {
                     OneTimeClassFullDate = o.OneTimeClassFullDate,
@@ -539,6 +539,7 @@ namespace WebAppsMoodle.Controllers
             {
                 ClassTitle = c.ClassesDescription.Title,
                 ClassId = c.ClassesId,
+                ClassDescription = c.ClassesDescription,
                 RoomNumber = room.RoomNumber,
                 RoomId = room.RoomId,
                 TeacherName = c.Teacher.Username,
@@ -549,15 +550,18 @@ namespace WebAppsMoodle.Controllers
 
                 RecurringClasses = c.RecurringClassDates.Select(r => new
                 {
+                    RecurrenceDayId = r.RecurringClassDateId,
                     RecurrenceDay = r.RecurrenceDay,
                     RecurrenceStartTime = r.RecurrenceStartTime,
                     RecurrenceEndTime = r.RecurrenceEndTime,
                     IsEven = r.IsEven,
                     IsEveryWeek = r.IsEveryWeek
+
                 }).ToList(),
 
                 OneTimeClasses = c.OneTimeClassDates.Select(o => new
                 {
+                    OneTimeClassId = o.OneTimeClassDateId,
                     OneTimeClassFullDate = o.OneTimeClassFullDate,
                     OneTimeClassStartTime = o.OneTimeClassStartTime,
                     OneTimeClassEndTime = o.OneTimeClassEndTime,
@@ -765,7 +769,11 @@ namespace WebAppsMoodle.Controllers
 
         //Endpoint to get all classes for a specific date
         [HttpGet("classes/date/OneTimeClass")]
-        public async Task<IActionResult> GetOneTimeClassByDate(DateTime date)
+        public a
+            
+            
+            
+             sync Task<IActionResult> GetOneTimeClassByDate(DateTime date)
         {
 
             var classes = await _context.Classes
