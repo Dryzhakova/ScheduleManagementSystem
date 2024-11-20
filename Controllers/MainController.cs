@@ -581,6 +581,37 @@ namespace WebAppsMoodle.Controllers
             return room?.RoomId; // ¬озвращаем RoomId или null, если комната не найдена
         }
 
+
+        [HttpGet("GetRoomNumberByRoomId")]
+        public async Task<IActionResult> GetRoomNumberByRoomIdAsync(string roomId)
+        {
+            if (string.IsNullOrEmpty(roomId)) return BadRequest("Room ID is missing.");
+
+            var room = await _context.Rooms
+                .AsNoTracking()
+                .SingleOrDefaultAsync(r => r.RoomId == roomId);
+            Console.WriteLine(room);
+
+            if (room == null) return BadRequest("Room not found.");
+
+            var classes = await _context.Classes
+              .Include(c => c.Room)
+              .Where(c => c.RoomId == roomId)
+              .ToListAsync();
+
+            if (classes.Count == 0) return NotFound("No classes found for this room.");
+
+            var result = classes.Select(c => new
+            {
+                RoomNumber = room.RoomNumber,
+                RoomBuilding = "MS"
+            }).ToList();
+
+            return Ok(result);
+            // ≈сли комната не найдена, возвращаем null
+            // return room?.RoomId; // ¬озвращаем RoomId или null, если комната не найдена
+        }
+
         // Endpoint to get all classes for a specific day of the week
         [HttpGet("classes/day/dayOfWeek")]
         public async Task<IActionResult> GetClassesForDayOfWeek(int dayOfWeek)
