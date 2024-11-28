@@ -396,9 +396,17 @@ namespace WebAppsMoodle.Controllers
         [HttpPost("restoreRecurringClass/{classId}")]
         public async Task<IActionResult> RestoreRecurringClass(string classId, [FromBody] DateTime restorationDate)
         {
+            var canceledDate = await _context.CanceledRecurringClasses
+                .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Date == restorationDate.Date);
 
-            return Ok();
+            if (canceledDate != null) return NotFound(new { message = "No canceled class found for the specified date." });
+
+            _context.CanceledRecurringClasses.Remove(canceledDate); 
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Message = "Recurring class restored" });
         }
+
             [HttpPut("updateClass/{classId}")]
         public async Task<IActionResult> UpdateClass(string classId, [FromBody] UpdateClassRequest model)
         {
