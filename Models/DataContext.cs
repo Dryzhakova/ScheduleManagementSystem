@@ -14,7 +14,7 @@ namespace WebAppsMoodle.Models
         public DbSet<OneTimeClassDate> OneTimeClasses { get; set; }
         public DbSet<RecurringClassDate> RecurringClasses { get; set; }
         public DbSet<CanceledRecurringClass> CanceledRecurringClasses { get; set; }
-
+        public DbSet<Campus> Campuses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -42,9 +42,12 @@ namespace WebAppsMoodle.Models
             modelBuilder.Entity<CanceledRecurringClass>()
             .HasOne(c => c.Class) 
             .WithMany(c => c.CanceledRecurrClass) 
-            .HasForeignKey(c => c.ClassesId); 
+            .HasForeignKey(c => c.ClassesId);
 
-
+            modelBuilder.Entity<Classes>()
+           .HasOne(c => c.Campus) 
+           .WithMany(c => c.Classes)
+           .HasForeignKey(c => c.CampusId); 
 
         }
     }

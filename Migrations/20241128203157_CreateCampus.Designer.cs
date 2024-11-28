@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebAppsMoodle.Models;
 
@@ -10,9 +11,11 @@ using WebAppsMoodle.Models;
 namespace WebAppsMoodle.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20241128203157_CreateCampus")]
+    partial class CreateCampus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.10");
@@ -28,7 +31,7 @@ namespace WebAppsMoodle.Migrations
 
                     b.HasKey("Campusid");
 
-                    b.ToTable("Campuses");
+                    b.ToTable("Campus");
                 });
 
             modelBuilder.Entity("WebAppsMoodle.Models.CanceledRecurringClass", b =>

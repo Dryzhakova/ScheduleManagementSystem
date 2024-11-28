@@ -11,6 +11,9 @@
         public string ClassesDescriptionId { get; set; }
         public ClassesDescription ClassesDescription { get; set; } // Связь с ClassesDescription
 
+        public string CampusId { get; set; }
+        public Campus Campus { get; set; }
+
         public ICollection<CanceledRecurringClass> CanceledRecurrClass { get; set; } // Связь с OneTimeClassDate
         public ICollection<OneTimeClassDate> OneTimeClassDates { get; set; } // Связь с OneTimeClassDate
         public ICollection<RecurringClassDate> RecurringClassDates { get; set; } // Связь с RecurringClassDate

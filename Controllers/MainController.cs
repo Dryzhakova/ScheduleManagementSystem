@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Text;
 using WebAppsMoodle.Models;
 using System.Globalization;
+using WebAppsMoodle.Migrations;
 
 /* ОТМЕНА ЗАНЯТИЙ
  * 
@@ -51,12 +52,18 @@ namespace WebAppsMoodle.Controllers
 
 
         // Mock database for storing users
-        private static readonly List<Teacher> _teacher = new List<Teacher>();
+         
         private static readonly List<Room> _rooms = new List<Room>();
+        public static readonly List<Campus> _campus = new List<Campus>();
+        private static readonly List<Teacher> _teacher = new List<Teacher>();
         private static readonly List<Classes> _classes = new List<Classes>();
-        private static readonly List <ClassesDescription> _classesDescription = new List<ClassesDescription>();
+        public static readonly List<Models.CanceledRecurringClass> _canceledRecurringClasses = new List<Models.CanceledRecurringClass>();
         public static readonly List <OneTimeClassDate> _oneTimeClasses = new List<OneTimeClassDate>();
         public static readonly List <RecurringClassDate> _recurringClasses = new List<RecurringClassDate>();
+        private static readonly List <ClassesDescription> _classesDescription = new List<ClassesDescription>();
+       
+        
+        
         // Register endpoint
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] TeacherRegisterModel model)
@@ -211,6 +218,13 @@ namespace WebAppsMoodle.Controllers
                 newRoom = existingRoom;
             }
 
+            var newCampus = new Campus
+            {
+                CampusName = model.CampusName
+            };
+
+            await _context.Campuses.AddAsync(newCampus);
+            await _context.SaveChangesAsync();
 
             // Создаем описание занятия
             var classesDescription = new ClassesDescription
@@ -229,6 +243,7 @@ namespace WebAppsMoodle.Controllers
                 {
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
+                    CampusId = newCampus.Campusid,
                     ClassesDescriptionId = classesDescription.ClassesDescriptionId
                 };
 
@@ -253,6 +268,7 @@ namespace WebAppsMoodle.Controllers
                 {  
                     TeacherId = teacherId,
                     RoomId = newRoom.RoomId,
+                    CampusId = newCampus.Campusid,
                     ClassesDescriptionId = classesDescription.ClassesDescriptionId
                 };
 
@@ -382,7 +398,7 @@ namespace WebAppsMoodle.Controllers
                 .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Date == cancellationDate.Date);
             if (exitingCancellation != null) return Conflict(new { Message = "The class is already canceled for the specified date." });
 
-            var canceledClass = new CanceledRecurringClass
+            var canceledClass = new Models.CanceledRecurringClass
             {
                 ClassesId = classId,
                 CanceledDate = cancellationDate.Date,
@@ -683,6 +699,7 @@ namespace WebAppsMoodle.Controllers
 
             var classes = await _context.Classes
               .Include(c => c.Room) 
+              .Include(c => c.Campus)
               .Include(c => c.ClassesDescription) 
               .Include(c => c.OneTimeClassDates)
               .Include(c => c.RecurringClassDates)
@@ -695,6 +712,8 @@ namespace WebAppsMoodle.Controllers
             {
                 ClassTitle = c.ClassesDescription.Title,
                 ClassId = c.ClassesId,
+                CampusId = c.CampusId,
+                CampusName = c.Campus.CampusName,
                 RoomNumber = c.Room.RoomNumber,
                 RoomId = c.Room.RoomId,
                 TeacherName = checkTeacherId.Username,
@@ -854,6 +873,7 @@ namespace WebAppsMoodle.Controllers
 
             var classes = await _context.Classes
               .Include(c => c.Teacher)
+              .Include(c => c.Campus)
               .Include(c => c.ClassesDescription)
               .Include(c => c.OneTimeClassDates)
               .Include(c => c.RecurringClassDates)
@@ -866,6 +886,8 @@ namespace WebAppsMoodle.Controllers
             {
                 ClassTitle = c.ClassesDescription.Title,
                 ClassId = c.ClassesId,
+                CampusId = c.CampusId,
+                CampusName = c.Campus.CampusName,
                 RoomNumber = room.RoomNumber,
                 RoomId = room.RoomId,
                 TeacherName = c.Teacher.Username,
@@ -925,6 +947,7 @@ namespace WebAppsMoodle.Controllers
             //если есть задание к этому кабинету то добавить вывод если нет вывод данных кабинета и здания
             var classes = await _context.Classes
               .Include(c => c.Room)
+              .Include(c => c.Campus)
               .Where(c => c.RoomId == roomId)
               .ToListAsync();
 
@@ -932,8 +955,10 @@ namespace WebAppsMoodle.Controllers
 
             var result = classes.Select(c => new
             {
+                roomId = roomId,
                 RoomNumber = room.RoomNumber,
-                RoomBuilding = "MS"
+                CampusId = c.CampusId,
+                CampusName = c.Campus.CampusName
             }).ToList();
 
             return Ok(result);
@@ -959,7 +984,9 @@ namespace WebAppsMoodle.Controllers
            .Include(c => c.Classes) 
                .ThenInclude(c => c.Teacher) 
            .Include(c => c.Classes) 
-               .ThenInclude(c => c.Room) 
+               .ThenInclude(c => c.Room)
+           .Include(c => c.Classes)
+               .ThenInclude(c => c.Campus)
            .Include(c => c.Classes)
                .ThenInclude(c => c.ClassesDescription) 
            .ToListAsync();
@@ -976,6 +1003,8 @@ namespace WebAppsMoodle.Controllers
                 TeacherName = c.Classes.Teacher.Username, 
                 TeacherId = c.Classes.Teacher.TeacherId,
                 TeacherTitle = c.Classes.Teacher.Title,
+                CampusId = c.Classes.CampusId,
+                CampusName = c.Classes.Campus.CampusName,
                 RoomNumber = c.Classes.Room.RoomNumber, 
                 RoomId = c.Classes.Room.RoomId,
                 ClassTitle = c.Classes.ClassesDescription.Title, 
@@ -1073,6 +1102,7 @@ namespace WebAppsMoodle.Controllers
             var classes = await _context.Classes
                 .Include(c => c.ClassesDescription)
                 .Include(c => c.Teacher)
+                .Include(c => c.Campus)
                 .Include(c => c.OneTimeClassDates)
                 .Include(c => c.RecurringClassDates)
                 .ToListAsync();
@@ -1085,6 +1115,8 @@ namespace WebAppsMoodle.Controllers
                     ClassId = c.ClassesId,
                     ClassTitle = c.ClassesDescription.Title,
                     TeacherName = c.Teacher.Username,
+                    CampusId = c.CampusId,
+                    CampusName = c.Campus.CampusName,
                     ClassType = "OneTime",
                     OneTimeClassFullDate = c.OneTimeClassDates
                         .Where(o => o.OneTimeClassFullDate?.Date == date.Date)
@@ -1104,6 +1136,8 @@ namespace WebAppsMoodle.Controllers
                     ClassId = c.ClassesId,
                     ClassTitle = c.ClassesDescription.Title,
                     TeacherName = c.Teacher.Username,
+                    CampusId = c.CampusId,
+                    CampusName = c.Campus.CampusName,
                     ClassType = "Recurring",
                     RecurrenceDay = c.RecurringClassDates
                         .Where(r => r.RecurrenceDay == dayOfWeek)
@@ -1132,6 +1166,7 @@ namespace WebAppsMoodle.Controllers
                 .Include(c => c.ClassesDescription) 
                 .Include(c => c.Teacher) 
                 .Include(c => c.Room)
+                .Include(c => c.Campus)
                 .Include(c => c.OneTimeClassDates) 
                 .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate.HasValue && o.OneTimeClassFullDate.Value.Date == date.Date)) 
                 .Select(c => new
@@ -1143,6 +1178,8 @@ namespace WebAppsMoodle.Controllers
                     TeacherTitle = c.Teacher.Title,
                     RoomId = c.RoomId,
                     RoomNumber = c.Room.RoomNumber,
+                    CampusId = c.CampusId,
+                    CampusName = c.Campus.CampusName,
                     OneTimeClassFullDate = c.OneTimeClassDates
                         .Where(o => o.OneTimeClassFullDate.HasValue && o.OneTimeClassFullDate.Value.Date == date.Date)
                         .Select(o => o.OneTimeClassFullDate.Value.ToString("yyyy-MM-dd"))
@@ -1170,6 +1207,7 @@ namespace WebAppsMoodle.Controllers
                 .Include(c => c.ClassesDescription) 
                 .Include(c => c.Teacher) 
                 .Include(c => c.Room)
+                .Include(c => c.Campus)
                 .Include(c => c.RecurringClassDates) 
                 .ToListAsync(); 
 
@@ -1198,7 +1236,9 @@ namespace WebAppsMoodle.Controllers
                     TeacherTitle = c.Teacher.Title,
                     RoomId = c.RoomId,
                     RoomNumber = c.Room.RoomNumber,
-                    RecurrenceDay = c.RecurringClassDates
+                   CampusId = c.CampusId,
+                   CampusName = c.Campus.CampusName,
+                   RecurrenceDay = c.RecurringClassDates
                         .Where(r => r.RecurrenceDay == dayOfWeek)
                         .Select(r => r.RecurrenceDay.ToString()) // Для получения имени дня недели
                         .FirstOrDefault()

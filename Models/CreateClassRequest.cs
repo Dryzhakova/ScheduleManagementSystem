@@ -10,6 +10,9 @@ namespace WebAppsMoodle.Models
         public string Title { get; set; } // Заголовок занятия
         public string Description { get; set; } // Описание занятия
 
+        //Campus
+        public string CampusName { get; set; }
+
         //OneTimeClass
         public bool IsOneTimeClass { get; set; } // Указывает, является ли занятие одноразовым
 
