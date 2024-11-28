@@ -358,7 +358,43 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "successfully." });
         }
 
-        [HttpPut("updateClass/{classId}")]
+        private bool IsEvenWeek(DateTime date)
+        {
+            var firstDayOfYear = new DateTime(date.Year, 1, 1);
+            var weekNumber = (date - firstDayOfYear).Days / 7 + 1;
+            return weekNumber % 2 == 0;
+        }
+
+        [HttpPost("cancelRecurringClass/{classId}")]
+        public async Task<IActionResult> CancelRecurringClass(string classId, [FromBody] DateTime cancellationDate)
+        {
+            var reccuringClass = await _context.RecurringClasses
+                .FirstOrDefaultAsync(r => r.ClassesId == classId );
+
+            if (reccuringClass == null) return NotFound(new { Message = "Recurring class not found." });
+
+            if (reccuringClass.RecurrenceDay != cancellationDate.DayOfWeek) return BadRequest(new { Message = "The provided date does not match the recurring schedule." });
+
+            bool isEveryWeek = IsEvenWeek(cancellationDate);
+            if (!reccuringClass.IsEveryWeek && reccuringClass.IsEven != isEveryWeek) return BadRequest(new { Message = "The provided date does not match the recurring schedule's week pattern." });
+
+            var exitingCancellation = await _context.CanceledRecurringClasses
+                .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Date == cancellationDate.Date);
+            if (exitingCancellation != null) return Conflict(new { Message = "The class is already canceled for the specified date." });
+
+            var canceledClass = new CanceledRecurringClass
+            {
+                ClassesId = classId,
+                CanceledDate = cancellationDate.Date,
+            };
+
+            await _context.CanceledRecurringClasses.AddAsync(canceledClass);
+            await _context.SaveChangesAsync();
+            return Ok(new { Message = "Recurring class canceled successfully." });
+        }
+            
+
+            [HttpPut("updateClass/{classId}")]
         public async Task<IActionResult> UpdateClass(string classId, [FromBody] UpdateClassRequest model)
         {
             // Проверяем, существует ли класс

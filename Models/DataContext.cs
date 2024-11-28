@@ -13,6 +13,8 @@ namespace WebAppsMoodle.Models
         public DbSet<ClassesDescription> ClassesDescription { get; set; }
         public DbSet<OneTimeClassDate> OneTimeClasses { get; set; }
         public DbSet<RecurringClassDate> RecurringClasses { get; set; }
+        public DbSet<CanceledRecurringClass> CanceledRecurringClasses { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,9 +35,14 @@ namespace WebAppsMoodle.Models
 
             // Связь Classes и OneTimeClassDate
             modelBuilder.Entity<Classes>()
-            .HasMany(c => c.OneTimeClassDates) // Одно занятие может иметь много дат
-            .WithOne() // Указывает, что OneTimeClassDate не имеет навигационного свойства обратно к Classes
+            .HasMany(c => c.OneTimeClassDates)
+            .WithOne() 
             .HasForeignKey(с => с.ClassesId);
+
+            modelBuilder.Entity<CanceledRecurringClass>()
+            .HasOne(c => c.Class) 
+            .WithMany(c => c.CanceledRecurrClass) 
+            .HasForeignKey(c => c.ClassesId); 
 
 
 
