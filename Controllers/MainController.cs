@@ -392,8 +392,13 @@ namespace WebAppsMoodle.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { Message = "Recurring class canceled successfully." });
         }
-            
 
+        [HttpPost("restoreRecurringClass/{classId}")]
+        public async Task<IActionResult> RestoreRecurringClass(string classId, [FromBody] DateTime restorationDate)
+        {
+
+            return Ok();
+        }
             [HttpPut("updateClass/{classId}")]
         public async Task<IActionResult> UpdateClass(string classId, [FromBody] UpdateClassRequest model)
         {
@@ -1118,6 +1123,7 @@ namespace WebAppsMoodle.Controllers
             var classes = await _context.Classes
                 .Include(c => c.ClassesDescription) 
                 .Include(c => c.Teacher) 
+                .Include(c => c.Room)
                 .Include(c => c.OneTimeClassDates) 
                 .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate.HasValue && o.OneTimeClassFullDate.Value.Date == date.Date)) 
                 .Select(c => new
@@ -1127,6 +1133,8 @@ namespace WebAppsMoodle.Controllers
                     TeacherId = c.TeacherId,
                     TeacherName = c.Teacher.Username,
                     TeacherTitle = c.Teacher.Title,
+                    RoomId = c.RoomId,
+                    RoomNumber = c.Room.RoomNumber,
                     OneTimeClassFullDate = c.OneTimeClassDates
                         .Where(o => o.OneTimeClassFullDate.HasValue && o.OneTimeClassFullDate.Value.Date == date.Date)
                         .Select(o => o.OneTimeClassFullDate.Value.ToString("yyyy-MM-dd"))
@@ -1153,6 +1161,7 @@ namespace WebAppsMoodle.Controllers
             var classes = await _context.Classes
                 .Include(c => c.ClassesDescription) 
                 .Include(c => c.Teacher) 
+                .Include(c => c.Room)
                 .Include(c => c.RecurringClassDates) 
                 .ToListAsync(); 
 
@@ -1166,11 +1175,12 @@ namespace WebAppsMoodle.Controllers
                     && (today.TimeOfDay >= r.RecurrenceStartTime && today.TimeOfDay <= r.RecurrenceEndTime)) // Проверка по времени
                 )
                 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! checkout
-               /* Фильтрация по дню недели: Мы проверяем, есть ли у класса запись о повторяющемся занятии на заданный день недели(r.RecurrenceDay == dayOfWeek).
-                Четность: Используя r.IsEveryWeek, r.IsEven, и проверяя, четный ли сегодня день(today.Day % 2 == 0), мы определяем, является ли класс повторяющимся 
-                для этого дня.
-                Проверка времени: Мы сравниваем текущее время(today.TimeOfDay) с временем начала и окончания занятия(RecurrenceStartTime и RecurrenceEndTime), 
-               чтобы убедиться, что занятие все еще актуально. */    
+            /* Фильтрация по дню недели: Мы проверяем, есть ли у класса запись о повторяющемся занятии на заданный день недели(r.RecurrenceDay == dayOfWeek).
+             Четность: Используя r.IsEveryWeek, r.IsEven, и проверяя, четный ли сегодня день(today.Day % 2 == 0), мы определяем, является ли класс повторяющимся 
+             для этого дня.
+             Проверка времени: Мы сравниваем текущее время(today.TimeOfDay) с временем начала и окончания занятия(RecurrenceStartTime и RecurrenceEndTime), 
+            чтобы убедиться, что занятие все еще актуально. */
+
                .Select(c => new
                 {
                     ClassId = c.ClassesId,
@@ -1178,6 +1188,8 @@ namespace WebAppsMoodle.Controllers
                     TeacherId = c.TeacherId,
                     TeacherName = c.Teacher.Username,
                     TeacherTitle = c.Teacher.Title,
+                    RoomId = c.RoomId,
+                    RoomNumber = c.Room.RoomNumber,
                     RecurrenceDay = c.RecurringClassDates
                         .Where(r => r.RecurrenceDay == dayOfWeek)
                         .Select(r => r.RecurrenceDay.ToString()) // Для получения имени дня недели
