@@ -9,25 +9,19 @@ using WebAppsMoodle.Models;
 using System.Globalization;
 using WebAppsMoodle.Migrations;
 
-/* ОТМЕНА ЗАНЯТИЙ
+/* 
  * 
  * DB TOKEN TABLE  - ID TOKEN -
  * login/verification
  * 
- * DB  MS TABLE  - ID CAMPUS -
- * connection with room table
  * 
  * endpoint
  *  1.1 Delete/Update 
- *   2.1 Class, teacher
+ *   2.1 Class, 
+ *   2.2 teacher если есть созданные задания удалить 
  *  1.2 IsRoomOccupied FUCK NE RABOTAET
- *  1.3 сделать вывод названия, описания и кабинет, IsCanceled or not
- *  1.4 Получаем все занятия для данного преподавателя
+ *  1.4     [HttpGet("{teacherId}/room/all")] если повторяющиеся не выводит одноразовые и поустое значение также и наоборот 
  *  
- * class cancel 
- * reccuring - for specific day
- * onetime - true -> false  IsCanceled and reverse false -> true 
- * 
  * chackout
  * - regist password(lenght
  * - room only digits
@@ -523,48 +517,61 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "Class and all related data deleted successfully." });
         }
 
-    /*    [HttpDelete("deleteClass/{classId}")]
-        public async Task<IActionResult> DeleteClassOnetimeRecurringAll(string classId, [FromQuery] string? deleteType = null)
+        [HttpDelete("deleteAccount/{teacherId}")]
+        public async Task<IActionResult> DeleteAccount(string teacherId)
         {
-            // Проверяем, существует ли класс
-            var classToDelete = await _context.Classes
-                .Include(c => c.OneTimeClassDates)
-                .Include(c => c.RecurringClassDates)
-                .Include(c => c.ClassesDescription)
-                .FirstOrDefaultAsync(c => c.ClassesId == classId);
+            var teacherToDelete = await _context.Teachers
+                .FirstOrDefaultAsync(t => t.TeacherId == teacherId);
 
-            if (classToDelete == null)
-                return NotFound(new { Message = "Class not found." });
+            if (teacherToDelete == null) return NotFound(new { Message = "Inccorect ID." });
 
-            switch (deleteType?.ToLower())
-            {
-                case "onetime":
-                    // Удаляем только одноразовые занятия
-                    _context.OneTimeClasses.RemoveRange(classToDelete.OneTimeClassDates);
-                    break;
-
-                case "recurring":
-                    // Удаляем только повторяющиеся занятия
-                    _context.RecurringClasses.RemoveRange(classToDelete.RecurringClassDates);
-                    break;
-
-                case null: // Если deleteType не указан, удаляем всё
-                case "all":
-                    // Удаляем связанные записи
-                    _context.OneTimeClasses.RemoveRange(classToDelete.OneTimeClassDates);
-                    _context.RecurringClasses.RemoveRange(classToDelete.RecurringClassDates);
-                    _context.ClassesDescription.Remove(classToDelete.ClassesDescription);
-                    _context.Classes.Remove(classToDelete);
-                    break;
-
-                default:
-                    return BadRequest(new { Message = "Invalid delete type. Use 'onetime', 'recurring', or 'all'." });
-            }
-
+            _context.Teachers.RemoveRange(teacherToDelete);
             await _context.SaveChangesAsync();
+            return Ok(new { Message = "Account deleted successfully." });
+        }
 
-            return Ok(new { Message = "Deletion completed successfully.", DeleteType = deleteType ?? "all" });
-        }*/
+        /*    [HttpDelete("deleteClass/{classId}")]
+            public async Task<IActionResult> DeleteClassOnetimeRecurringAll(string classId, [FromQuery] string? deleteType = null)
+            {
+                // Проверяем, существует ли класс
+                var classToDelete = await _context.Classes
+                    .Include(c => c.OneTimeClassDates)
+                    .Include(c => c.RecurringClassDates)
+                    .Include(c => c.ClassesDescription)
+                    .FirstOrDefaultAsync(c => c.ClassesId == classId);
+
+                if (classToDelete == null)
+                    return NotFound(new { Message = "Class not found." });
+
+                switch (deleteType?.ToLower())
+                {
+                    case "onetime":
+                        // Удаляем только одноразовые занятия
+                        _context.OneTimeClasses.RemoveRange(classToDelete.OneTimeClassDates);
+                        break;
+
+                    case "recurring":
+                        // Удаляем только повторяющиеся занятия
+                        _context.RecurringClasses.RemoveRange(classToDelete.RecurringClassDates);
+                        break;
+
+                    case null: // Если deleteType не указан, удаляем всё
+                    case "all":
+                        // Удаляем связанные записи
+                        _context.OneTimeClasses.RemoveRange(classToDelete.OneTimeClassDates);
+                        _context.RecurringClasses.RemoveRange(classToDelete.RecurringClassDates);
+                        _context.ClassesDescription.Remove(classToDelete.ClassesDescription);
+                        _context.Classes.Remove(classToDelete);
+                        break;
+
+                    default:
+                        return BadRequest(new { Message = "Invalid delete type. Use 'onetime', 'recurring', or 'all'." });
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { Message = "Deletion completed successfully.", DeleteType = deleteType ?? "all" });
+            }*/
 
 
         // Endpoint to get all classes for a specific teacher
