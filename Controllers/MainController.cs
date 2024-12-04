@@ -10,6 +10,11 @@ using System.Globalization;
 using WebAppsMoodle.Migrations;
 
 /* 
+
+И ещё мне надо чтобы я в эндпоинтах для отмены отправлял дату в формате "2024-12-03", а не "2024-12-01T00:42:13.553Z" т-к я без понятия что это за формат Хд
+Azami — 01.12.2024 01:49
+А, и последнее, раз уж у нас есть теперь эндпоинт для изменения заданий, неплохо было бы иметь эндпоинт который для id 1 занятия выводил бы всю инфу о нём,
+т-к для изменения занятий мне скорее всего придётся эту инфу заново запрашивать с бэкенда
  * 
  * DB TOKEN TABLE  - ID TOKEN -
  * login/verification
@@ -378,6 +383,7 @@ namespace WebAppsMoodle.Controllers
         [HttpPost("cancelRecurringClass/{classId}")]
         public async Task<IActionResult> CancelRecurringClass(string classId, [FromBody] DateTime cancellationDate)
         {
+
             var reccuringClass = await _context.RecurringClasses
                 .FirstOrDefaultAsync(r => r.ClassesId == classId );
 
@@ -389,7 +395,7 @@ namespace WebAppsMoodle.Controllers
             if (!reccuringClass.IsEveryWeek && reccuringClass.IsEven != isEveryWeek) return BadRequest(new { Message = "The provided date does not match the recurring schedule's week pattern." });
 
             var exitingCancellation = await _context.CanceledRecurringClasses
-                .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Date == cancellationDate.Date);
+                .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Value.Date == cancellationDate.Date);
             if (exitingCancellation != null) return Conflict(new { Message = "The class is already canceled for the specified date." });
 
             var canceledClass = new Models.CanceledRecurringClass
@@ -407,7 +413,7 @@ namespace WebAppsMoodle.Controllers
         public async Task<IActionResult> RestoreRecurringClass(string classId, [FromBody] DateTime restorationDate)
         {
             var canceledDate = await _context.CanceledRecurringClasses
-                .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Date == restorationDate.Date);
+                .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Value.Date == restorationDate.Date);
 
             if (canceledDate != null) return NotFound(new { message = "No canceled class found for the specified date." });
 
@@ -710,6 +716,7 @@ namespace WebAppsMoodle.Controllers
               .Include(c => c.ClassesDescription) 
               .Include(c => c.OneTimeClassDates)
               .Include(c => c.RecurringClassDates)
+              .Include(c => c.CanceledRecurrClass)
               .Where(c => c.TeacherId == teacherId)
               .ToListAsync();
 
@@ -734,13 +741,17 @@ namespace WebAppsMoodle.Controllers
                     RecurrenceDay = r.RecurrenceDay,
                     RecurrenceStartTime = r.RecurrenceStartTime,
                     RecurrenceEndTime = r.RecurrenceEndTime,
+                    CanceledDates = c.CanceledRecurrClass
+                        .Where(cr => cr.ClassesId == c.ClassesId) // Проверяем, относится ли отмена к этому классу
+                        .Select(cr => cr.CanceledDate.Value.ToShortDateString()) // Берем дату отмены
+                        .ToList(),
                     IsEven = r.IsEven,
                     IsEveryWeek = r.IsEveryWeek
                 }).ToList(),
 
                  OneTimeClasses = c.OneTimeClassDates.Select(o => new
                 {
-                    OneTimeClassFullDate = o.OneTimeClassFullDate,
+                    OneTimeClassFullDate = o.OneTimeClassFullDate.Value.ToShortDateString(),
                     OneTimeClassStartTime = o.OneTimeClassStartTime,
                     OneTimeClassEndTime = o.OneTimeClassEndTime,
 
@@ -764,45 +775,7 @@ namespace WebAppsMoodle.Controllers
 
              return Ok(rooms);
 
-            /* // Получаем все кабинеты
-    var rooms = await _context.Rooms
-        .Select(r => new
-        {
-            RoomId = r.RoomId,
-            RoomNumber = r.RoomNumber,
-            ClassTitle = (string)null // Изначально пустой заголовок для кабинетов без классов
-        })
-        .ToListAsync();
-
-    // Получаем занятия, связанные с кабинетами
-    var roomClasses = await _context.Classes
-        .Include(c => c.ClassesDescription)
-        .Include(c => c.Room)
-        .Select(c => new
-        {
-            RoomId = c.Room.RoomId,
-            RoomNumber = c.Room.RoomNumber,
-            ClassTitle = c.ClassesDescription.Title
-        })
-        .ToListAsync();
-
-    // Добавляем информацию о классах к кабинетам
-    var result = rooms.Select(r => 
-    {
-        var classes = roomClasses
-            .Where(rc => rc.RoomId == r.RoomId)
-            .Select(rc => rc.ClassTitle)
-            .ToList();
-
-        return new
-        {
-            r.RoomId,
-            r.RoomNumber,
-            ClassTitles = classes.Count > 0 ? classes : new List<string> { null }
-        };
-    });
-
-    return Ok(result);*/
+  
 
         }
 
@@ -884,10 +857,12 @@ namespace WebAppsMoodle.Controllers
               .Include(c => c.ClassesDescription)
               .Include(c => c.OneTimeClassDates)
               .Include(c => c.RecurringClassDates)
+              .Include(c => c.CanceledRecurrClass)
               .Where(c => c.RoomId == roomId)
               .ToListAsync();
 
             if (classes.Count == 0) return NotFound("No classes found for this room.");
+
 
             var result = classes.Select(c => new
             {
@@ -909,12 +884,16 @@ namespace WebAppsMoodle.Controllers
                     RecurrenceStartTime = r.RecurrenceStartTime,
                     RecurrenceEndTime = r.RecurrenceEndTime,
                     IsEven = r.IsEven,
-                    IsEveryWeek = r.IsEveryWeek
+                    IsEveryWeek = r.IsEveryWeek,
+                    CanceledDates = c.CanceledRecurrClass
+                        .Where(cr => cr.ClassesId == c.ClassesId) // Проверяем, относится ли отмена к этому классу
+                        .Select(cr => cr.CanceledDate.Value.ToShortDateString()) // Берем дату отмены
+                        .ToList()
                 }).ToList(),
 
                 OneTimeClasses = c.OneTimeClassDates.Select(o => new
                 {
-                    OneTimeClassFullDate = o.OneTimeClassFullDate,
+                    OneTimeClassFullDate = o.OneTimeClassFullDate.Value.Date.ToShortDateString(),
                     OneTimeClassStartTime = o.OneTimeClassStartTime,
                     OneTimeClassEndTime = o.OneTimeClassEndTime,
 
@@ -996,6 +975,8 @@ namespace WebAppsMoodle.Controllers
                .ThenInclude(c => c.Campus)
            .Include(c => c.Classes)
                .ThenInclude(c => c.ClassesDescription) 
+           .Include(c => c.Classes)
+               .ThenInclude(c => c.CanceledRecurrClass)    
            .ToListAsync();
 
             // Проверяем, есть ли занятия для данного дня недели
@@ -1004,6 +985,7 @@ namespace WebAppsMoodle.Controllers
                 return NotFound($"No classes found for the specified day of the week: {selectedDay}.");
             }
 
+       
             // Создаем результат с нужными данными
             var result = classes.Select(c => new
             {
@@ -1015,11 +997,16 @@ namespace WebAppsMoodle.Controllers
                 RoomNumber = c.Classes.Room.RoomNumber, 
                 RoomId = c.Classes.Room.RoomId,
                 ClassTitle = c.Classes.ClassesDescription.Title, 
-                isEveryWeek = c.IsEveryWeek,
-                IsEven = c.IsEven,
+                IsCanceled = c.Classes.IsCanceled.ToString(),
+                isEveryWeek = c.IsEveryWeek.ToString(),
+                IsEven = c.IsEven.ToString(),
                 recurrenceDay = c.RecurrenceDay,
                 recurrenceStartTime = c.RecurrenceStartTime,
-                recurrenceEndTime = c.RecurrenceEndTime
+                recurrenceEndTime = c.RecurrenceEndTime,
+                CanceledDates = c.Classes.CanceledRecurrClass
+                    .Where(cr => cr.ClassesId == c.Classes.ClassesId) // Проверяем, относится ли отмена к этому классу
+                    .Select(cr => cr.CanceledDate.Value.ToShortDateString()) // Берем дату отмены
+                    .ToList()
 
             }).ToList();
 
@@ -1163,7 +1150,6 @@ namespace WebAppsMoodle.Controllers
             return Ok(allClasses);
         }
 
-
         //Endpoint to get all classes for a specific date
         [HttpGet("classes/date/OneTimeClass")]
         public async Task<IActionResult> GetOneTimeClassByDate(DateTime date)
@@ -1179,7 +1165,7 @@ namespace WebAppsMoodle.Controllers
                 .Select(c => new
                 {
                     ClassId = c.ClassesId,
-                    ClassTitle = c.ClassesDescription.Title,
+                    ClassTitle = c.ClassesDescription.Title, 
                     TeacherId = c.TeacherId,
                     TeacherName = c.Teacher.Username,
                     TeacherTitle = c.Teacher.Title,
@@ -1187,6 +1173,11 @@ namespace WebAppsMoodle.Controllers
                     RoomNumber = c.Room.RoomNumber,
                     CampusId = c.CampusId,
                     CampusName = c.Campus.CampusName,
+                    IsCanceled = c.IsCanceled.ToString(),
+                    OneTimeClassStartTime = c.OneTimeClassDates
+                    .Select(o => o.OneTimeClassStartTime.ToString()),
+                    OneTimeClassEndTime = c.OneTimeClassDates
+                    .Select(o => o.OneTimeClassEndTime.ToString()),
                     OneTimeClassFullDate = c.OneTimeClassDates
                         .Where(o => o.OneTimeClassFullDate.HasValue && o.OneTimeClassFullDate.Value.Date == date.Date)
                         .Select(o => o.OneTimeClassFullDate.Value.ToString("yyyy-MM-dd"))

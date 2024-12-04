@@ -8,7 +8,7 @@
         public bool IsEveryWeek { get; set; }
         public bool IsEven { get; set; }// четное или нечетное 
 
- /*       public DateTime RecurrenceStartDate { get; set; } // Дата начала повторения
+/*        public DateTime RecurrenceStartDate { get; set; } // Дата начала повторения
         public DateTime RecurrenceEndDate { get; set; } // Дата окончания повторения*/
         public DayOfWeek RecurrenceDay { get; set; } // День недели для повторения (например, Понедельник, Вторник и т. д.)
         public TimeSpan RecurrenceStartTime { get; set; } // Время начала повторяющегося занятия
