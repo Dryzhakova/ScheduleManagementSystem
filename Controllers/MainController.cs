@@ -8,6 +8,7 @@ using System.Text;
 using WebAppsMoodle.Models;
 using System.Globalization;
 using WebAppsMoodle.Migrations;
+using System.Threading.Tasks;
 
 /* 
 
@@ -89,20 +90,31 @@ namespace WebAppsMoodle.Controllers
 
         // Login endpoint
         [HttpPost("login")]
-        public IActionResult Login([FromBody] TeacherLoginModel model)
+        public async Task<IActionResult> Login([FromBody] TeacherLoginModel model)
         {
             // Check if user exists
             var teacher = _context.Teachers.SingleOrDefault(t => t.Username == model.Username);
+            if (teacher == null)return BadRequest("Invalid login");
 
-            if (teacher == null)
+            var token = GenerateJwtToken(teacher);
+
+            var userToken = new UserToken
             {
-                return BadRequest("Invalid login");
-            }
+                Token = token,
+                TeacherID = teacher.TeacherId,
+                Expiration = DateTime.UtcNow.AddDays(7)
+            };
 
+
+            _context.UserTokens.Add(userToken);
+            await _context.SaveChangesAsync();
             // Сохраняем TeacherId в сессию
-            HttpContext.Session.SetString("TeacherId", teacher.TeacherId);
+            // HttpContext.Session.SetString("TeacherId", teacher.TeacherId);
 
-            return Ok(new { Message = "Login successful", TeacherId = teacher.TeacherId });
+
+
+
+            return Ok(new { Message = "Login successful", TeacherId = teacher.TeacherId, Token = token, Expiration = userToken.Expiration.ToShortDateString() });
 
 
 
@@ -113,34 +125,51 @@ namespace WebAppsMoodle.Controllers
 
         }
 
-     /*   [HttpPost("IsRoomOccupied")]//nie rabotaet
-        public async Task<bool> IsRoomOccupied(string roomId, DateTime date, TimeSpan startTime, TimeSpan endTime, string? classId = null)
+        [HttpGet("validate-token")]
+        public async Task<IActionResult> ValidateToken(string token)
         {
-            var existingClasses = await _context.Classes
-                .Include(c => c.OneTimeClassDates)
-                .Include(c => c.RecurringClassDates)
-                .Where(c => c.RoomId == roomId)
-                .ToListAsync();
+            var userToken = await _context.UserTokens
+                .Include(ut => ut.TeacherID)
+                .SingleOrDefaultAsync(ut => ut.Token == token && ut.Expiration > DateTime.UtcNow);
 
-            var isOccupiedOneTime = existingClasses
-                .SelectMany(c => c.OneTimeClassDates)
-                .Any(o =>
-                        o.OneTimeClassFullDate.Value.Date == date.Date &&
-                        o.OneTimeClassStartTime < endTime &&
-                        o.OneTimeClassEndTime > startTime &&
-                         (string.IsNullOrEmpty(classId) || o.ClassesId != classId)
-                        );
+            if (userToken == null) return Unauthorized(new { message = "Invalid or expired token" });
 
-            var isOccupiedRecurring = existingClasses
-               .SelectMany(c => c.RecurringClassDates)
-               .Any(r =>
-                       r.RecurrenceDay == date.DayOfWeek &&
-                       r.RecurrenceStartTime < endTime &&
-                       r.RecurrenceEndTime > startTime &&
-                        (string.IsNullOrEmpty(classId) || r.ClassesId != classId)
-                       );
-            return isOccupiedOneTime || isOccupiedRecurring;
-        }*/
+            return Ok(new
+            {
+                Message = "Token is valid",
+                Username = userToken.teacher.Username,
+                Expiration = userToken.Expiration
+            });
+        }
+
+        /*   [HttpPost("IsRoomOccupied")]//nie rabotaet
+           public async Task<bool> IsRoomOccupied(string roomId, DateTime date, TimeSpan startTime, TimeSpan endTime, string? classId = null)
+           {
+               var existingClasses = await _context.Classes
+                   .Include(c => c.OneTimeClassDates)
+                   .Include(c => c.RecurringClassDates)
+                   .Where(c => c.RoomId == roomId)
+                   .ToListAsync();
+
+               var isOccupiedOneTime = existingClasses
+                   .SelectMany(c => c.OneTimeClassDates)
+                   .Any(o =>
+                           o.OneTimeClassFullDate.Value.Date == date.Date &&
+                           o.OneTimeClassStartTime < endTime &&
+                           o.OneTimeClassEndTime > startTime &&
+                            (string.IsNullOrEmpty(classId) || o.ClassesId != classId)
+                           );
+
+               var isOccupiedRecurring = existingClasses
+                  .SelectMany(c => c.RecurringClassDates)
+                  .Any(r =>
+                          r.RecurrenceDay == date.DayOfWeek &&
+                          r.RecurrenceStartTime < endTime &&
+                          r.RecurrenceEndTime > startTime &&
+                           (string.IsNullOrEmpty(classId) || r.ClassesId != classId)
+                          );
+               return isOccupiedOneTime || isOccupiedRecurring;
+           }*/
 
         [HttpPost("createClass")]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model, string teacherId)
@@ -1313,7 +1342,8 @@ namespace WebAppsMoodle.Controllers
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-            new Claim(ClaimTypes.Name, user.Username)
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.NameIdentifier, user.TeacherId)
 
         }),
                 Expires = DateTime.UtcNow.AddDays(7), // Token expires in 7 days

@@ -16,38 +16,53 @@ namespace WebAppsMoodle.Models
         public DbSet<CanceledRecurringClass> CanceledRecurringClasses { get; set; }
         public DbSet<Campus> Campuses { get; set; }
 
+        public DbSet<UserToken> UserTokens { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Classes>()
-           .HasOne(c => c.Teacher)
-           .WithMany(t => t.Classes)
-           .HasForeignKey(c => c.TeacherId);
 
             modelBuilder.Entity<Classes>()
-           .HasOne(c => c.Room)
-           .WithMany(r => r.Classes)
-           .HasForeignKey(c => c.RoomId);
+               .HasOne(c => c.Teacher)
+               .WithMany(t => t.Classes)
+               .HasForeignKey(c => c.TeacherId);
 
             modelBuilder.Entity<Classes>()
-           .HasOne(c => c.ClassesDescription)
-           .WithMany(d => d.Classes)
-           .HasForeignKey(c => c.ClassesDescriptionId);
+               .HasOne(c => c.Room)
+               .WithMany(r => r.Classes)
+               .HasForeignKey(c => c.RoomId);
+
+            modelBuilder.Entity<Classes>()
+               .HasOne(c => c.ClassesDescription)
+               .WithMany(d => d.Classes)
+               .HasForeignKey(c => c.ClassesDescriptionId);
 
             // Связь Classes и OneTimeClassDate
             modelBuilder.Entity<Classes>()
-            .HasMany(c => c.OneTimeClassDates)
-            .WithOne() 
-            .HasForeignKey(с => с.ClassesId);
+                .HasMany(c => c.OneTimeClassDates)
+                .WithOne() 
+                .HasForeignKey(с => с.ClassesId);
 
             modelBuilder.Entity<CanceledRecurringClass>()
-            .HasOne(c => c.Class) 
-            .WithMany(c => c.CanceledRecurrClass) 
-            .HasForeignKey(c => c.ClassesId);
+                .HasOne(c => c.Class) 
+                .WithMany(c => c.CanceledRecurrClass) 
+                .HasForeignKey(c => c.ClassesId);
 
             modelBuilder.Entity<Classes>()
-           .HasOne(c => c.Campus) 
-           .WithMany(c => c.Classes)
-           .HasForeignKey(c => c.CampusId); 
+               .HasOne(c => c.Campus) 
+               .WithMany(c => c.Classes)
+               .HasForeignKey(c => c.CampusId);
+
+            modelBuilder.Entity<UserToken>()
+                .HasKey(ut => ut.TokenId);
+
+            modelBuilder.Entity<UserToken>()
+                .HasOne(ut => ut.teacher)
+                .WithMany(t => t.UserTokens)
+                .HasForeignKey(ut => ut.TeacherID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
+            base.OnModelCreating(modelBuilder);
 
         }
     }

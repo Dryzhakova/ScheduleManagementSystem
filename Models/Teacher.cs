@@ -8,5 +8,6 @@
         public string Title { get; set; }
 
         public ICollection<Classes> Classes { get; set; } // Связь с таблицей Classes
+        public ICollection<UserToken> UserTokens { get; set; }
     }
 }
