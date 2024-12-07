@@ -63,7 +63,6 @@ namespace WebAppsMoodle.Controllers
         private static readonly List <ClassesDescription> _classesDescription = new List<ClassesDescription>();
        
         
-        
         // Register endpoint
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] TeacherRegisterModel model)
