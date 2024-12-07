@@ -96,32 +96,31 @@ namespace WebAppsMoodle.Controllers
             var teacher = _context.Teachers.SingleOrDefault(t => t.Username == model.Username);
             if (teacher == null)return BadRequest("Invalid login");
 
-            var token = GenerateJwtToken(teacher);
+            var existedToken = await _context.UserTokens.SingleOrDefaultAsync(ut => ut.TeacherID == teacher.TeacherId && ut.Expiration > DateTime.UtcNow);
 
-            var userToken = new UserToken
+            if (existedToken == null)
             {
-                Token = token,
-                TeacherID = teacher.TeacherId,
-                Expiration = DateTime.UtcNow.AddDays(7)
-            };
+
+                var token = GenerateJwtToken(teacher);
+
+                var userToken = new UserToken
+                {
+                    Token = token,
+                    TeacherID = teacher.TeacherId,
+                    Expiration = DateTime.UtcNow.AddDays(7)
+                };
 
 
-            _context.UserTokens.Add(userToken);
-            await _context.SaveChangesAsync();
-            // Сохраняем TeacherId в сессию
-            // HttpContext.Session.SetString("TeacherId", teacher.TeacherId);
+                _context.UserTokens.Add(userToken);
+                await _context.SaveChangesAsync();
+                // Сохраняем TeacherId в сессию
+                // HttpContext.Session.SetString("TeacherId", teacher.TeacherId);
+                return Ok(new { Message = "Login successful", TeacherId = teacher.TeacherId, Token = token, Expiration = userToken.Expiration.ToShortDateString() });
+            }
 
 
+            return Ok(new { Message = "Login successful", TeacherId = teacher.TeacherId, Token = existedToken.Token, Expiration = existedToken.Expiration.ToShortDateString() });
 
-
-            return Ok(new { Message = "Login successful", TeacherId = teacher.TeacherId, Token = token, Expiration = userToken.Expiration.ToShortDateString() });
-
-
-
-            /* // Create JWT token
-             var token = GenerateJwtToken(user);
-
-             return Ok(new { Token = token });*/
 
         }
 
@@ -172,18 +171,25 @@ namespace WebAppsMoodle.Controllers
            }*/
 
         [HttpPost("createClass")]
-        public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model, string teacherId)
+        public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model, string teacherId, string teacherToken)
         {
 
            // var teacherId = HttpContext.Session.GetString("TeacherId");
 
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
 
-            var checkTeacherId = await _context.Teachers
+            var userToken = await _context.UserTokens
+               .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
+
+            if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
+
+            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
+
+            /*var checkTeacherId = await _context.Teachers
              .AsNoTracking()
              .SingleOrDefaultAsync(r => r.TeacherId == teacherId);
 
-            if (checkTeacherId == null) return NotFound("Teacher ID is not found.");
+            if (checkTeacherId == null) return NotFound("Teacher ID is not found.");*/
 
             var existingRoom = await _context.Rooms.SingleOrDefaultAsync(r => r.RoomNumber == model.RoomNumber);
             if (existingRoom == null)
@@ -552,15 +558,24 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "Class and all related data deleted successfully." });
         }
 
-        [HttpDelete("deleteAccount/{teacherId}")]
-        public async Task<IActionResult> DeleteAccount(string teacherId)
+        [HttpDelete("deleteAccount/{teacherToken}")]
+        public async Task<IActionResult> DeleteAccount(string teacherToken, string teacherId)
         {
+          var userToken = await _context.UserTokens
+                .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
+
+            if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
+
+            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
+
             var teacherToDelete = await _context.Teachers
-                .FirstOrDefaultAsync(t => t.TeacherId == teacherId);
+                .FirstOrDefaultAsync(t => t.TeacherId == userToken.TeacherID);
 
             if (teacherToDelete == null) return NotFound(new { Message = "Inccorect ID." });
 
             _context.Teachers.RemoveRange(teacherToDelete);
+            var tokensToDelete = _context.UserTokens.Where(ut => ut.TeacherID == teacherToDelete.TeacherId);
+            _context.UserTokens.RemoveRange(tokensToDelete);
             await _context.SaveChangesAsync();
             return Ok(new { Message = "Account deleted successfully." });
         }
