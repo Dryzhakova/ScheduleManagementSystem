@@ -50,6 +50,16 @@ namespace WebAppsMoodle.Controllers
             {
                 return BadRequest("Username already exists");
             }
+            if (!IsNameCorrect(model.Username))
+            {
+                return BadRequest("Username must be at least 3 characters long, contain first uppercase letter");
+            }
+            // Проверка надежности пароля
+            if (!IsPasswordStrong(model.Password))
+            {
+                return BadRequest(new { Message = "Password must be at least 8 characters long, contain one uppercase letter, one lowercase letter, one number, and one special character." });
+            }
+
 
             // We should hash the password before storing it
             var newTeacher = new Teacher
@@ -63,6 +73,24 @@ namespace WebAppsMoodle.Controllers
             await _context.SaveChangesAsync();
 
             return Ok("User registered successfully");
+        }
+
+        private bool IsNameCorrect(string username)
+        {
+            // Пример проверки надежности
+            var namePolicy = new System.Text.RegularExpressions.Regex(
+                   @"^[A-Z][a-z]{2,}$");
+
+            return namePolicy.IsMatch(username);
+        }
+        private bool IsPasswordStrong(string password)
+        {
+            // Пример проверки надежности
+            var passwordPolicy = new System.Text.RegularExpressions.Regex(
+                 @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)[A-Za-z\d\W]{8,}$");
+
+            // Условия: минимум 8 символов, одна строчная буква, одна заглавная, одна цифра, один спецсимвол
+            return passwordPolicy.IsMatch(password);
         }
 
         // Login endpoint
@@ -571,7 +599,6 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "Class updated successfully." });
         }
 
-
         [HttpDelete("deleteClass/{classId}")]
         public async Task<IActionResult> DeleteClass(string teacherId, string teacherToken, string classId)
         {
@@ -669,7 +696,6 @@ namespace WebAppsMoodle.Controllers
 
                 return Ok(new { Message = "Deletion completed successfully.", DeleteType = deleteType ?? "all" });
             }*/
-
 
         // Endpoint to get all classes for a specific teacher
         [HttpGet("teacher/all")]
@@ -1343,7 +1369,6 @@ namespace WebAppsMoodle.Controllers
 
              return Ok(filteredClasses);
          }*/
-
         public async Task<IActionResult> GetRecurringClassBydate(DateTime date)
         {
             // Получаем номер дня недели для заданной даты
@@ -1395,8 +1420,6 @@ namespace WebAppsMoodle.Controllers
 
             return Ok(filteredClasses);
         }
-
- 
 
         private string GenerateJwtToken(Teacher user)
         {
