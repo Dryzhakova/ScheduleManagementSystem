@@ -371,15 +371,26 @@ namespace WebAppsMoodle.Controllers
         }*/
 
         [HttpPost("cancelOrRestoreClassOneTime/{classId}")]
-        public async Task<IActionResult> RestoreCancelOneTimeClass(string classId)
+        public async Task<IActionResult> RestoreCancelOneTimeClass(string classId, string teacherId, string teacherToken)
         {
+
+            if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
+
+
+            var userToken = await _context.UserTokens
+               .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
+            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
+            if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
+
             var classData = await _context.Classes
                 .Include(c => c.OneTimeClassDates)
                 .FirstOrDefaultAsync(c=>c.ClassesId == classId);
 
             if (classData == null) return NotFound(new { Message = "Class not found." });
+            if (classData.TeacherId != teacherId) return BadRequest(new { Message = "You do not have permission to cancel this class." });
 
-            if(classData.IsCanceled)
+
+            if (classData.IsCanceled)
             {
                 var classRestore = await _context.Classes
                .Include(c => c.OneTimeClassDates)
@@ -403,7 +414,6 @@ namespace WebAppsMoodle.Controllers
 
             return Ok(new { Message = "successfully." });
         }
-
         private bool IsEvenWeek(DateTime date)
         {
             var firstDayOfYear = new DateTime(date.Year, 1, 1);
@@ -411,16 +421,25 @@ namespace WebAppsMoodle.Controllers
             return weekNumber % 2 == 0;
         }
 
-
         [HttpPost("cancelRecurringClass/{classId}")]
-
-        public async Task<IActionResult> CancelRecurringClass(string classId, [FromBody] DateTime cancellationDate)
+        public async Task<IActionResult> CancelRecurringClass(string classId, string teacherId, string teacherToken, [FromBody] DateTime cancellationDate)
         {
+            if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
+
+            var userToken = await _context.UserTokens
+               .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
+
+            if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
+
+            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
             // cancellationDate.ToString(); 
+
             var reccuringClass = await _context.RecurringClasses
                 .FirstOrDefaultAsync(r => r.ClassesId == classId);
 
             if (reccuringClass == null) return NotFound(new { Message = "Recurring class not found." });
+
+            if (reccuringClass.Classes.TeacherId != teacherId) return BadRequest(new { Message = "You do not have permission to cancel this class." });
 
             if (reccuringClass.RecurrenceDay != cancellationDate.DayOfWeek) return BadRequest(new { Message = "The provided date does not match the recurring schedule." });
 
@@ -442,12 +461,23 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "Recurring class canceled successfully." });
         }
       
-
-            [HttpPost("restoreRecurringClass/{classId}")]
-        public async Task<IActionResult> RestoreRecurringClass(string classId, [FromBody] DateTime restorationDate)
+        [HttpPost("restoreRecurringClass/{classId}")]
+        public async Task<IActionResult> RestoreRecurringClass(string classId, string teacherId, string teacherToken, [FromBody] DateTime restorationDate)
         {
+            if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
+
+            var userToken = await _context.UserTokens
+               .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
+
+            if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
+
+            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
+
             var canceledDate = await _context.CanceledRecurringClasses
                 .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Value.Date == restorationDate.Date);
+           
+            if (canceledDate.Class.TeacherId != teacherId) return BadRequest(new { Message = "You do not have permission to cancel this class." });
+
 
             if (canceledDate != null) return NotFound(new { message = "No canceled class found for the specified date." });
 
@@ -457,9 +487,18 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "Recurring class restored" });
         }
 
-            [HttpPut("updateClass/{classId}")]
-        public async Task<IActionResult> UpdateClass(string classId, [FromBody] UpdateClassRequest model)
+        [HttpPut("updateClass/{classId}")]
+        public async Task<IActionResult> UpdateClass(string classId, string teacherId, string teacherToken, [FromBody] UpdateClassRequest model)
         {
+            if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
+
+            var userToken = await _context.UserTokens
+               .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
+
+            if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
+
+            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
+
             // Проверяем, существует ли класс
             var classToUpdate = await _context.Classes
                 .Include(c => c.OneTimeClassDates)
@@ -534,8 +573,16 @@ namespace WebAppsMoodle.Controllers
 
 
         [HttpDelete("deleteClass/{classId}")]
-        public async Task<IActionResult> DeleteClass(string classId)
+        public async Task<IActionResult> DeleteClass(string teacherId, string teacherToken, string classId)
         {
+            if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
+
+            var userToken = await _context.UserTokens
+               .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
+
+            if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
+
+            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
             // Проверяем, существует ли класс
             var classToDelete = await _context.Classes
                 .Include(c => c.OneTimeClassDates)
@@ -560,6 +607,7 @@ namespace WebAppsMoodle.Controllers
         [HttpDelete("deleteAccount/{teacherToken}")]
         public async Task<IActionResult> DeleteAccount(string teacherToken, string teacherId)
         {
+
           var userToken = await _context.UserTokens
                 .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
 
