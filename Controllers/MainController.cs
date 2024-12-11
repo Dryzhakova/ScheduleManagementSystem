@@ -10,29 +10,7 @@ using System.Globalization;
 using WebAppsMoodle.Migrations;
 using System.Threading.Tasks;
 
-/* 
 
-И ещё мне надо чтобы я в эндпоинтах для отмены отправлял дату в формате "2024-12-03", а не "2024-12-01T00:42:13.553Z" т-к я без понятия что это за формат Хд
-Azami — 01.12.2024 01:49
-А, и последнее, раз уж у нас есть теперь эндпоинт для изменения заданий, неплохо было бы иметь эндпоинт который для id 1 занятия выводил бы всю инфу о нём,
-т-к для изменения занятий мне скорее всего придётся эту инфу заново запрашивать с бэкенда
- * 
- * DB TOKEN TABLE  - ID TOKEN -
- * login/verification
- * 
- * 
- * endpoint
- *  1.1 Delete/Update 
- *   2.1 Class, 
- *   2.2 teacher если есть созданные задания удалить 
- *  1.2 IsRoomOccupied FUCK NE RABOTAET
- *  1.4     [HttpGet("{teacherId}/room/all")] если повторяющиеся не выводит одноразовые и поустое значение также и наоборот 
- *  
- * chackout
- * - regist password(lenght
- * - room only digits
- * - time - fucking simillarity start/end
- */
 
 namespace WebAppsMoodle.Controllers
 {
@@ -168,6 +146,22 @@ namespace WebAppsMoodle.Controllers
                           );
                return isOccupiedOneTime || isOccupiedRecurring;
            }*/
+
+        private int ConvertDayOfWeekToDbFormat(DayOfWeek dayOfWeek)
+        {
+            // Преобразуем System.DayOfWeek в формат базы данных
+            return dayOfWeek switch
+            {
+                DayOfWeek.Sunday => 0,
+                DayOfWeek.Monday => 1,
+                DayOfWeek.Tuesday => 2,
+                DayOfWeek.Wednesday => 3,
+                DayOfWeek.Thursday => 4,
+                DayOfWeek.Friday => 5,
+                DayOfWeek.Saturday => 6,
+                _ => throw new ArgumentOutOfRangeException(nameof(dayOfWeek), "Invalid day of week.")
+            };
+        }
 
         [HttpPost("createClass")]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model, string teacherId, string teacherToken)
@@ -314,13 +308,16 @@ namespace WebAppsMoodle.Controllers
                     ClassesId = newClass.ClassesId,
                     IsEven = model.IsEven,
                     IsEveryWeek = model.IsEveryWeek,
-                    RecurrenceDay = model.RecurrenceDay,
+                   // RecurrenceDay = (DayOfWeek)ConvertDayOfWeekToDbFormat((DayOfWeek)Enum.ToObject(typeof(DayOfWeek), model.RecurrenceDay)),
+
+                    RecurrenceDay = (DayOfWeek)ConvertDayOfWeekToDbFormat(model.RecurrenceDay),
                     RecurrenceStartTime = model.RecurrenceStartTime.ToTimeSpan(),
                     RecurrenceEndTime = model.RecurrenceEndTime.ToTimeSpan()
                 };
+               
 
                 await _context.RecurringClasses.AddAsync(recurringClassDate);
-              
+               _logger.LogInformation($"RecurrenceDay saved: {model.RecurrenceDay}, RecurrenceDay retrieved: {recurringClassDate.RecurrenceDay}");
             }
             await _context.SaveChangesAsync();
             /*else
@@ -341,7 +338,7 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "Class and Room created successfully.", ClassesID = newClass.ClassesId });
         }
 
- /*       [HttpPost("cancelClassOneTime/{classId}")]
+   /*     [HttpPost("cancelClassOneTime/{classId}")]
         public async Task<IActionResult> CancelsOneTimeClass(string classId)
         {
             var classCancel = await _context.Classes
@@ -354,7 +351,7 @@ namespace WebAppsMoodle.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new {Message = "Class canceled successfully."});
+            return Ok(new { Message = "Class canceled successfully." });
         }
 
         [HttpPost("restoreOneTimeClass/{classId}")]
@@ -414,12 +411,14 @@ namespace WebAppsMoodle.Controllers
             return weekNumber % 2 == 0;
         }
 
+
         [HttpPost("cancelRecurringClass/{classId}")]
+
         public async Task<IActionResult> CancelRecurringClass(string classId, [FromBody] DateTime cancellationDate)
         {
-
+            // cancellationDate.ToString(); 
             var reccuringClass = await _context.RecurringClasses
-                .FirstOrDefaultAsync(r => r.ClassesId == classId );
+                .FirstOrDefaultAsync(r => r.ClassesId == classId);
 
             if (reccuringClass == null) return NotFound(new { Message = "Recurring class not found." });
 
@@ -442,8 +441,9 @@ namespace WebAppsMoodle.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { Message = "Recurring class canceled successfully." });
         }
+      
 
-        [HttpPost("restoreRecurringClass/{classId}")]
+            [HttpPost("restoreRecurringClass/{classId}")]
         public async Task<IActionResult> RestoreRecurringClass(string classId, [FromBody] DateTime restorationDate)
         {
             var canceledDate = await _context.CanceledRecurringClasses
@@ -1000,13 +1000,15 @@ namespace WebAppsMoodle.Controllers
         public async Task<IActionResult> GetClassesForDayOfWeek(int dayOfWeek)
         {
             // Проверяем, что введенное значение дня недели находится в пределах от 0 до 6
-            if (dayOfWeek < 0 || dayOfWeek > 6) // Так как DayOfWeek начинается с 0 (воскресенье) по 6 (суббота)
+            // Так как DayOfWeek начинается с 0 (воскресенье) по 6 (суббота)
+            if (dayOfWeek < 0 || dayOfWeek > 6) 
             {
                 return BadRequest("Invalid day of the week. Please provide a number between 0 (Sunday) and 6 (Saturday).");
             }
 
             // Приводим int к DayOfWeek
             DayOfWeek selectedDay = (DayOfWeek)dayOfWeek;
+            Console.WriteLine($"Selected Day: {selectedDay}");
 
             var classes = await _context.RecurringClasses
            .Where(c => c.RecurrenceDay == selectedDay)
@@ -1025,7 +1027,7 @@ namespace WebAppsMoodle.Controllers
             // Проверяем, есть ли занятия для данного дня недели
             if (classes.Count == 0)
             {
-                return NotFound($"No classes found for the specified day of the week: {selectedDay}.");
+                return NotFound(new { message = $"No classes found for the specified day of the week: {selectedDay}.", selectedDay });
             }
 
        
@@ -1039,11 +1041,13 @@ namespace WebAppsMoodle.Controllers
                 CampusName = c.Classes.Campus.CampusName,
                 RoomNumber = c.Classes.Room.RoomNumber, 
                 RoomId = c.Classes.Room.RoomId,
+                ClassId = c.ClassesId,
                 ClassTitle = c.Classes.ClassesDescription.Title, 
                 IsCanceled = c.Classes.IsCanceled.ToString(),
                 isEveryWeek = c.IsEveryWeek.ToString(),
                 IsEven = c.IsEven.ToString(),
-                recurrenceDay = c.RecurrenceDay,
+                //recurrenceDay = c.RecurrenceDay,
+                recurrenceDay = c.RecurrenceDay.ToString(),
                 recurrenceStartTime = c.RecurrenceStartTime,
                 recurrenceEndTime = c.RecurrenceEndTime,
                 CanceledDates = c.Classes.CanceledRecurrClass
@@ -1236,39 +1240,89 @@ namespace WebAppsMoodle.Controllers
         }
         [HttpGet("classes/date/RecurringClassDates")]
 
+        /* public async Task<IActionResult> GetRecurringClassBydate(DateTime date)
+         {
+             // Получаем номер дня недели для заданной даты
+             var dayOfWeek = date.DayOfWeek;
+             var today = DateTime.Today;
+
+             // Загружаем все классы с их повторяющимися датами в память
+             var classes = await _context.Classes
+                 .Include(c => c.ClassesDescription) 
+                 .Include(c => c.Teacher) 
+                 .Include(c => c.Room)
+                 .Include(c => c.Campus)
+                 .Include(c => c.RecurringClassDates) 
+                 .ToListAsync();
+
+             // Фильтруем на стороне клиента
+             var filteredClasses = classes
+                 .Where(c => c.RecurringClassDates.Any(r => NormalizeDayOfWeek((int)r.RecurrenceDay) == dayOfWeek
+                     && (r.IsEveryWeek ||
+                         (r.IsEven && today.Day % 2 == 0) ||
+                         (!r.IsEven && today.Day % 2 != 0))) // Проверка по времени
+                 )
+                 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! checkout
+              Фильтрация по дню недели: Мы проверяем, есть ли у класса запись о повторяющемся занятии на заданный день недели(r.RecurrenceDay == dayOfWeek).
+              Четность: Используя r.IsEveryWeek, r.IsEven, и проверяя, четный ли сегодня день(today.Day % 2 == 0), мы определяем, является ли класс повторяющимся 
+              для этого дня.
+              Проверка времени: Мы сравниваем текущее время(today.TimeOfDay) с временем начала и окончания занятия(RecurrenceStartTime и RecurrenceEndTime), 
+             чтобы убедиться, что занятие все еще актуально. 
+
+                .Select(c => new
+                 {
+                     ClassId = c.ClassesId,
+                     ClassTitle = c.ClassesDescription.Title,
+                     TeacherId = c.TeacherId,
+                     TeacherName = c.Teacher.Username,
+                     TeacherTitle = c.Teacher.Title,
+                     RoomId = c.RoomId,
+                     RoomNumber = c.Room.RoomNumber,
+                    CampusId = c.CampusId,
+                    CampusName = c.Campus.CampusName,
+                    RecurrenceDay = c.RecurringClassDates
+                         .Where(r => r.RecurrenceDay == dayOfWeek)
+                         .Select(r => r.RecurrenceDay.ToString()) // Для получения имени дня недели
+                         .FirstOrDefault()
+                 })
+                 .ToList(); // Преобразуем результат в список
+
+             if (!filteredClasses.Any())
+             {
+                 return NotFound (new { Message = "Class not found." , dayOfWeek});
+             }
+
+
+             return Ok(filteredClasses);
+         }*/
+
         public async Task<IActionResult> GetRecurringClassBydate(DateTime date)
         {
             // Получаем номер дня недели для заданной даты
             var dayOfWeek = date.DayOfWeek;
 
-            var today = DateTime.Today;
 
-            // Загружаем все классы с их повторяющимися датами в память
+            // Вычисляем четность недели
+            bool isEvenWeek = IsEvenWeek(date);
+
+            // Загружаем все классы с их повторяющимися датами из базы данных
             var classes = await _context.Classes
-                .Include(c => c.ClassesDescription) 
-                .Include(c => c.Teacher) 
+                .Include(c => c.ClassesDescription)
+                .Include(c => c.Teacher)
                 .Include(c => c.Room)
                 .Include(c => c.Campus)
-                .Include(c => c.RecurringClassDates) 
-                .ToListAsync(); 
+                .Include(c => c.RecurringClassDates)
+                .ToListAsync();
 
-
-            // Фильтруем на стороне клиента
+            // Фильтруем на стороне сервера
             var filteredClasses = classes
-                .Where(c => c.RecurringClassDates.Any(r => r.RecurrenceDay == dayOfWeek
-                    && (r.IsEveryWeek ||
-                        (r.IsEven && today.Day % 2 == 0) ||
-                        (!r.IsEven && today.Day % 2 != 0)) // Проверка на четность
-                    && (today.TimeOfDay >= r.RecurrenceStartTime && today.TimeOfDay <= r.RecurrenceEndTime)) // Проверка по времени
-                )
-                //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! checkout
-            /* Фильтрация по дню недели: Мы проверяем, есть ли у класса запись о повторяющемся занятии на заданный день недели(r.RecurrenceDay == dayOfWeek).
-             Четность: Используя r.IsEveryWeek, r.IsEven, и проверяя, четный ли сегодня день(today.Day % 2 == 0), мы определяем, является ли класс повторяющимся 
-             для этого дня.
-             Проверка времени: Мы сравниваем текущее время(today.TimeOfDay) с временем начала и окончания занятия(RecurrenceStartTime и RecurrenceEndTime), 
-            чтобы убедиться, что занятие все еще актуально. */
-
-               .Select(c => new
+                .Where(c => c.RecurringClassDates.Any(r =>
+                    r.RecurrenceDay == dayOfWeek && // Сравнение дня недели
+                    (r.IsEveryWeek ||
+                     (r.IsEven && isEvenWeek) ||
+                     (!r.IsEven && !isEvenWeek)) // Проверка четности недели
+                ))
+                .Select(c => new
                 {
                     ClassId = c.ClassesId,
                     ClassTitle = c.ClassesDescription.Title,
@@ -1277,70 +1331,26 @@ namespace WebAppsMoodle.Controllers
                     TeacherTitle = c.Teacher.Title,
                     RoomId = c.RoomId,
                     RoomNumber = c.Room.RoomNumber,
-                   CampusId = c.CampusId,
-                   CampusName = c.Campus.CampusName,
-                   RecurrenceDay = c.RecurringClassDates
+                    CampusId = c.CampusId,
+                    CampusName = c.Campus.CampusName,
+                    RecurrenceDay = c.RecurringClassDates
                         .Where(r => r.RecurrenceDay == dayOfWeek)
-                        .Select(r => r.RecurrenceDay.ToString()) // Для получения имени дня недели
+                        .Select(r => r.RecurrenceDay.ToString()) // Получаем строковое представление дня недели
                         .FirstOrDefault()
                 })
-                .ToList(); // Преобразуем результат в список
+                .ToList();
 
             if (!filteredClasses.Any())
             {
-                return NotFound("No classes found for the specified weekday.");
+                return NotFound(new { Message = "No classes found for the specified date.", DayOfWeek = dayOfWeek });
             }
 
-           
             return Ok(filteredClasses);
         }
 
-             /* // Получаем список занятий, повторяющихся по дням недели
-             var classes = await _context.Classes
-                 .Include(c => c.ClassesDescription) // Подключаем информацию о описании занятия
-                 .Include(c => c.Teacher) // Подключаем информацию о преподавателе
-                 .Include(c => c.RecurringClassDates) // Подключаем информацию о повторяющихся занятиях
-                 .Where(c => c.RecurringClassDates.Any(r => r.RecurrenceDay == dayOfWeek)) // Фильтруем по дню недели
-                 .Select(c => new
-                 {
-                     ClassId = c.ClassesId,
-                     ClassTitle = c.ClassesDescription.Title,
-                     TeacherName = c.Teacher.Username,
-                     RecurrenceDay = c.RecurringClassDates
-                         .Where(r => r.RecurrenceDay == dayOfWeek)
-                         .Select(r => r.RecurrenceDay.ToString()) // Для получения имени дня недели
-                         .FirstOrDefault()
-                 })
-                 .ToListAsync();
+ 
 
-            if (!classes.Any())
-            {
-                return NotFound("No classes found for the specified weekday.");
-            }*/
-      
-            /*  // Endpoint to get RoomId by room number
-              [HttpGet("roomId/{roomNumber}")]
-              public async Task<IActionResult> GetRoomIdByRoomNumber(string roomNumber)
-              {
-                  // Проверяем, существует ли комната с данным номером
-                  var room = await _context.Rooms
-                      .AsNoTracking() // Убираем отслеживание для оптимизации запроса
-                      .SingleOrDefaultAsync(r => r.RoomNumber == roomNumber);
-
-                  // Если комната не найдена, возвращаем сообщение об ошибке
-                  if (room == null)
-                  {
-                      return NotFound("Room does not exist.");
-                  }
-
-                  // Возвращаем RoomId
-                  return Ok(new { RoomId = room.RoomId });
-              }*/
-
-
-            // Helper method to generate JWT token
-
-            private string GenerateJwtToken(Teacher user)
+        private string GenerateJwtToken(Teacher user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes("your-secret-key-with-at-least-128-bits"); // Ensure your key has at least 128 bits
