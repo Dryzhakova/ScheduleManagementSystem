@@ -710,6 +710,7 @@ namespace WebAppsMoodle.Controllers
                    TeacherTitle =  r.Title
                })
                .ToListAsync();
+            if (teacher == null) return BadRequest("Teacher not found.");
 
             return Ok(teacher);
 
@@ -890,7 +891,9 @@ namespace WebAppsMoodle.Controllers
                 })
                 .ToListAsync();
 
-             return Ok(rooms);
+            if (rooms == null) return BadRequest("Room not found.");
+
+            return Ok(rooms);
 
   
 

@@ -15,7 +15,6 @@ namespace WebAppsMoodle.Models
         public DbSet<RecurringClassDate> RecurringClasses { get; set; }
         public DbSet<CanceledRecurringClass> CanceledRecurringClasses { get; set; }
         public DbSet<Campus> Campuses { get; set; }
-
         public DbSet<UserToken> UserTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
