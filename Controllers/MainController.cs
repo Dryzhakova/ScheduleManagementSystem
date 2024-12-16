@@ -22,15 +22,19 @@ namespace WebAppsMoodle.Controllers
         private readonly ILogger<MainController> _logger;
         private readonly DataContext _context;
       
-        public MainController(ILogger<MainController> logger, DataContext context)
+        public MainController(ILogger<MainController> logger, DataContext context, TeacherRepository teacherRepository, RoomRepository roomRepository)
         {
             _logger = logger;
             _context  = context;
+            _teacherRepository = teacherRepository;
+            _roomRepository = roomRepository;
         }
 
 
         // Mock database for storing users
-         
+        private readonly TeacherRepository _teacherRepository;
+        private readonly RoomRepository _roomRepository;
+
         private static readonly List<Room> _rooms = new List<Room>();
         public static readonly List<Campus> _campus = new List<Campus>();
         private static readonly List<Teacher> _teacher = new List<Teacher>();
@@ -133,7 +137,7 @@ namespace WebAppsMoodle.Controllers
         public async Task<IActionResult> ValidateToken(string token)
         {
             var userToken = await _context.UserTokens
-                .Include(ut => ut.TeacherID)
+                .Include(ut => ut.teacher)
                 .SingleOrDefaultAsync(ut => ut.Token == token && ut.Expiration > DateTime.UtcNow);
 
             if (userToken == null) return Unauthorized(new { message = "Invalid or expired token" });
@@ -142,38 +146,9 @@ namespace WebAppsMoodle.Controllers
             {
                 Message = "Token is valid",
                 Username = userToken.teacher.Username,
-                Expiration = userToken.Expiration
+                Expiration = userToken.Expiration.ToShortDateString()
             });
         }
-
-        /*   [HttpPost("IsRoomOccupied")]//nie rabotaet
-           public async Task<bool> IsRoomOccupied(string roomId, DateTime date, TimeSpan startTime, TimeSpan endTime, string? classId = null)
-           {
-               var existingClasses = await _context.Classes
-                   .Include(c => c.OneTimeClassDates)
-                   .Include(c => c.RecurringClassDates)
-                   .Where(c => c.RoomId == roomId)
-                   .ToListAsync();
-
-               var isOccupiedOneTime = existingClasses
-                   .SelectMany(c => c.OneTimeClassDates)
-                   .Any(o =>
-                           o.OneTimeClassFullDate.Value.Date == date.Date &&
-                           o.OneTimeClassStartTime < endTime &&
-                           o.OneTimeClassEndTime > startTime &&
-                            (string.IsNullOrEmpty(classId) || o.ClassesId != classId)
-                           );
-
-               var isOccupiedRecurring = existingClasses
-                  .SelectMany(c => c.RecurringClassDates)
-                  .Any(r =>
-                          r.RecurrenceDay == date.DayOfWeek &&
-                          r.RecurrenceStartTime < endTime &&
-                          r.RecurrenceEndTime > startTime &&
-                           (string.IsNullOrEmpty(classId) || r.ClassesId != classId)
-                          );
-               return isOccupiedOneTime || isOccupiedRecurring;
-           }*/
 
         private int ConvertDayOfWeekToDbFormat(DayOfWeek dayOfWeek)
         {
@@ -195,7 +170,6 @@ namespace WebAppsMoodle.Controllers
         public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest model, string teacherId, string teacherToken)
         {
 
-           // var teacherId = HttpContext.Session.GetString("TeacherId");
 
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
 
@@ -206,12 +180,7 @@ namespace WebAppsMoodle.Controllers
 
             if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
 
-            /*var checkTeacherId = await _context.Teachers
-             .AsNoTracking()
-             .SingleOrDefaultAsync(r => r.TeacherId == teacherId);
-
-            if (checkTeacherId == null) return NotFound("Teacher ID is not found.");*/
-
+          
             var existingRoom = await _context.Rooms.SingleOrDefaultAsync(r => r.RoomNumber == model.RoomNumber);
             if (existingRoom == null)
             {
@@ -220,47 +189,11 @@ namespace WebAppsMoodle.Controllers
                 await _context.Rooms.AddAsync(existingRoom);
             }
 
-         /*   var isOccupied = await IsRoomOccupied(
-                 roomId: existingRoom.RoomId,
-                 date: model.OneTimeClassFullDate ?? DateTime.MinValue,
-                 startTime: model.OneTimeClassStartTime.ToTimeSpan(),
-                 endTime: model.OneTimeClassEndTime.ToTimeSpan()
-                 );
-
-            if (isOccupied)
-            {
-                return Conflict(new { Message = "The room is occupied during the specified time." });
-            }*/
-
-            // o.OneTimeClassEndTime >= model.OneTimeClassStartTime у времени разніе модели
-            /*   // Проверяем, что комната не занята в указанное время
-               bool isRoomOccupied = _context.Classes
-               .Include(c => c.OneTimeClassDates)
-               .Include(c => c.RecurringClassDates)
-               .Where(c => c.RoomId == existingRoom.RoomId) // Фильтруем по номеру комнаты
-               .Any(c =>
-                   // Проверка для одноразовых занятий
-                   c.OneTimeClassDates.Any(o =>
-                       o.OneTimeClassFullDate.Value.Date == model.OneTimeClassFullDate.Value.Date &&
-                       o.OneTimeClassStartTime <= model.OneTimeClassEndTime &&
-                       o.OneTimeClassEndTime >= model.OneTimeClassStartTime
-                   ) ||
-
-                   // Проверка для повторяющихся занятий
-                   c.RecurringClassDates.Any(r =>
-                       r.RecurrenceDay == model.RecurrenceDay &&
-                       r.RecurrenceStartTime <= model.RecurrenceEndTime &&
-                       r.RecurrenceEndTime >= model.RecurrenceStartTime &&
-                       (r.IsEveryWeek ||
-                        (r.IsEven == model.IsEven)) // Учет четности недели
-                   )
-               );*/
-
+     
             Room newRoom;
             Classes newClass;
 
-            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! можно только одну такую комнату єксепшин если время в такой комнате уже занято с которой его хотят занять
-            // Если комната не существует, создаем новую
+          
             if (existingRoom == null)
             {
                 //only digits
@@ -281,19 +214,19 @@ namespace WebAppsMoodle.Controllers
             await _context.Campuses.AddAsync(newCampus);
             await _context.SaveChangesAsync();
 
-            // Создаем описание занятия
+           
             var classesDescription = new ClassesDescription
             {
-                Title = model.Title, // Заголовок занятия
-                Description = model.Description // Описание занятия
+                Title = model.Title, 
+                Description = model.Description 
             };
 
-            await _context.ClassesDescription.AddAsync(classesDescription); // Добавляем описание занятия в контекст
-            await _context.SaveChangesAsync(); // Сохраняем изменения в базе данных
+            await _context.ClassesDescription.AddAsync(classesDescription); 
+            await _context.SaveChangesAsync(); 
 
             if (model.IsOneTimeClass && model.OneTimeClassFullDate.HasValue)
             {
-                // Создаем новое занятие
+        
                 newClass = new Classes
                 {
                     TeacherId = teacherId,
@@ -303,9 +236,8 @@ namespace WebAppsMoodle.Controllers
                 };
 
                 await _context.Classes.AddAsync(newClass);
-                await _context.SaveChangesAsync(); // Сохраняем изменения в базе данных
+                await _context.SaveChangesAsync(); 
 
-                // Создаем запись для одноразового занятия
                 var oneTimeClassDate = new OneTimeClassDate
                 {
                     ClassesId = newClass.ClassesId,
@@ -330,14 +262,11 @@ namespace WebAppsMoodle.Controllers
                 await _context.Classes.AddAsync(newClass);
                
 
-                // Запись для повторяющегося занятия
                 var recurringClassDate = new RecurringClassDate
                 {  
                     ClassesId = newClass.ClassesId,
                     IsEven = model.IsEven,
                     IsEveryWeek = model.IsEveryWeek,
-                   // RecurrenceDay = (DayOfWeek)ConvertDayOfWeekToDbFormat((DayOfWeek)Enum.ToObject(typeof(DayOfWeek), model.RecurrenceDay)),
-
                     RecurrenceDay = (DayOfWeek)ConvertDayOfWeekToDbFormat(model.RecurrenceDay),
                     RecurrenceStartTime = model.RecurrenceStartTime.ToTimeSpan(),
                     RecurrenceEndTime = model.RecurrenceEndTime.ToTimeSpan()
@@ -348,55 +277,10 @@ namespace WebAppsMoodle.Controllers
                _logger.LogInformation($"RecurrenceDay saved: {model.RecurrenceDay}, RecurrenceDay retrieved: {recurringClassDate.RecurrenceDay}");
             }
             await _context.SaveChangesAsync();
-            /*else
-        {
-            // Создаем обычное занятие
-            var newClass = new Classes
-            {
-                ClassesId = Guid.NewGuid().ToString(), // Генерируем новый ID для занятия
-                TeacherId = teacherId,
-                RoomId = newRoom.RoomId,
-                IsCanceled = model.IsCanceled
-            };
-
-            await _context.Classes.AddAsync(newClass);
-            await _context.SaveChangesAsync(); // Сохраняем изменения в базе данных
-
-        }*/
+           
             return Ok(new { Message = "Class and Room created successfully.", ClassesID = newClass.ClassesId });
         }
 
-   /*     [HttpPost("cancelClassOneTime/{classId}")]
-        public async Task<IActionResult> CancelsOneTimeClass(string classId)
-        {
-            var classCancel = await _context.Classes
-                .Include(c => c.OneTimeClassDates)
-                .FirstOrDefaultAsync(c => c.ClassesId == classId);
-
-            if (classCancel == null) return NotFound(new { Message = "Class not found." });
-
-            classCancel.IsCanceled = true;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Message = "Class canceled successfully." });
-        }
-
-        [HttpPost("restoreOneTimeClass/{classId}")]
-        public async Task<IActionResult> RestoreOneTimeClass(string classId)
-        {
-            var classRestore = await _context.Classes
-                .Include(c => c.OneTimeClassDates)
-                .FirstOrDefaultAsync(c => c.ClassesId == classId);
-
-            if (classRestore == null) return NotFound(new { Message = "Class not found." });
-
-            classRestore.IsCanceled = false;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Message = "Class canceled successfully." });
-        }*/
 
         [HttpPost("cancelOrRestoreClassOneTime/{classId}")]
         public async Task<IActionResult> RestoreCancelOneTimeClass(string classId, string teacherId, string teacherToken)
@@ -527,7 +411,7 @@ namespace WebAppsMoodle.Controllers
 
             if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
 
-            // Проверяем, существует ли класс
+         
             var classToUpdate = await _context.Classes
                 .Include(c => c.OneTimeClassDates)
                 .Include(c => c.RecurringClassDates)
@@ -537,13 +421,12 @@ namespace WebAppsMoodle.Controllers
             if (classToUpdate == null)
                 return NotFound(new { Message = "Class not found." });
 
-            // Обновляем данные описания
+           
             if (!string.IsNullOrEmpty(model.Title))
                 classToUpdate.ClassesDescription.Title = model.Title;
             if (!string.IsNullOrEmpty(model.Description))
                 classToUpdate.ClassesDescription.Description = model.Description;
 
-            // Обновляем данные комнаты, если указана новая
             if (!string.IsNullOrEmpty(model.RoomNumber))
             {
                 var newRoom = await _context.Rooms.FirstOrDefaultAsync(r => r.RoomNumber == model.RoomNumber);
@@ -555,20 +438,7 @@ namespace WebAppsMoodle.Controllers
                 classToUpdate.RoomId = newRoom.RoomId;
             }
 
-           /* var isOccupied = await IsRoomOccupied(
-             roomId: classToUpdate.RoomId,
-             date: model.OneTimeClassFullDate ?? DateTime.MinValue,
-             startTime: model.OneTimeClassStartTime.ToTimeSpan(),
-             endTime: model.OneTimeClassEndTime.ToTimeSpan(),
-             classId: classToUpdate.ClassesId // Исключаем текущее занятие
-               );
-
-            if (isOccupied)
-            {
-                return Conflict(new { Message = "The room is occupied during the specified time." });
-            }*/
-
-            // Обновление расписания для одноразового занятия
+      
             if (model.IsOneTimeClass && model.OneTimeClassFullDate.HasValue)
             {
                 var oneTimeClass = classToUpdate.OneTimeClassDates.FirstOrDefault();
@@ -610,7 +480,7 @@ namespace WebAppsMoodle.Controllers
             if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
 
             if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
-            // Проверяем, существует ли класс
+
             var classToDelete = await _context.Classes
                 .Include(c => c.OneTimeClassDates)
                 .Include(c => c.RecurringClassDates)
@@ -620,7 +490,7 @@ namespace WebAppsMoodle.Controllers
             if (classToDelete == null)
                 return NotFound(new { Message = "Class not found." });
 
-            // Удаляем связанные записи
+           
             _context.OneTimeClasses.RemoveRange(classToDelete.OneTimeClassDates);
             _context.RecurringClasses.RemoveRange(classToDelete.RecurringClassDates);
             _context.ClassesDescription.Remove(classToDelete.ClassesDescription);
@@ -697,63 +567,7 @@ namespace WebAppsMoodle.Controllers
                 return Ok(new { Message = "Deletion completed successfully.", DeleteType = deleteType ?? "all" });
             }*/
 
-        // Endpoint to get all classes for a specific teacher
-        [HttpGet("teacher/all")]
-        public async Task<IActionResult> GetAllTeacherData()
-        {
-            // Получаем все кабинеты с полями RoomId и RoomNumber
-            var teacher = await _context.Teachers
-               .Select(r => new
-               {
-                   TeacherId = r.TeacherId,
-                   TeacherName = r.Username,
-                   TeacherTitle =  r.Title
-               })
-               .ToListAsync();
-            if (teacher == null) return BadRequest("Teacher not found.");
 
-            return Ok(teacher);
-
-          /*  // Получаем всех учителей
-            var teachers = await _context.Teachers
-                .Select(t => new
-                {
-                    TeacherId = t.TeacherId,
-                    TeacherName = t.Username,
-                    ClassTitle = (string)null // Изначально без данных
-                })
-                .ToListAsync();
-
-            // Получаем классы с описанием и преподавателем
-            var teacherClasses = await _context.Classes
-                .Include(c => c.ClassesDescription)
-                .Include(c => c.Teacher)
-                .Select(c => new
-                {
-                    TeacherId = c.Teacher.TeacherId,
-                    TeacherName = c.Teacher.Username,
-                    ClassTitle = c.ClassesDescription.Title
-                })
-                .ToListAsync();
-
-            // Добавляем информацию о классах к учителям
-            var result = teachers.Select(t =>
-            {
-                var classes = teacherClasses
-                    .Where(tc => tc.TeacherId == t.TeacherId)
-                    .Select(tc => tc.ClassTitle)
-                    .ToList();
-
-                return new
-                {
-                    t.TeacherId,
-                    t.TeacherName,
-                    ClassTitles = classes.Count > 0 ? classes : new List<string> { null }
-                };
-            });
-
-            return Ok(result);*/
-        }
         // Endpoint to get all classes for a specific teacher
         //[HttpGet("teacher/room/all")]
         /*   public async Task<IActionResult> GetClassesForTeacher()
@@ -812,11 +626,10 @@ namespace WebAppsMoodle.Controllers
 
         /*return Ok(new { Classes = classes, RecurringClasses = recurringClasses, OneTimeClasses = oneTimeClasses});
     } */
-      
+
         [HttpGet("{teacherId}/room/all")]
         public async Task<IActionResult> GetClassesForTeacher(string teacherId)
         {
-            // Получаем TeacherId из сессии
             //var teacherId = HttpContext.Session.GetString("TeacherId");
             //"teacherId": " 643b2240-51b9-466c-8752-676e563441b5 "
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
@@ -860,8 +673,8 @@ namespace WebAppsMoodle.Controllers
                     RecurrenceStartTime = r.RecurrenceStartTime,
                     RecurrenceEndTime = r.RecurrenceEndTime,
                     CanceledDates = c.CanceledRecurrClass
-                        .Where(cr => cr.ClassesId == c.ClassesId) // Проверяем, относится ли отмена к этому классу
-                        .Select(cr => cr.CanceledDate.Value.ToShortDateString()) // Берем дату отмены
+                        .Where(cr => cr.ClassesId == c.ClassesId)
+                        .Select(cr => cr.CanceledDate.Value.ToShortDateString()) 
                         .ToList(),
                     IsEven = r.IsEven,
                     IsEveryWeek = r.IsEveryWeek
@@ -882,86 +695,28 @@ namespace WebAppsMoodle.Controllers
             [HttpGet("room/all")]
         public async Task<IActionResult> GetAllRoomsData()
         {
-            // Получаем все кабинеты с полями RoomId и RoomNumber
-             var rooms = await _context.Rooms
-                .Select(r => new
-                {
-                    RoomId = r.RoomId,
-                    RoomNumber = r.RoomNumber
-                })
-                .ToListAsync();
+            var rooms = await _roomRepository.GetAllRoomsAsync();
 
             if (rooms == null) return BadRequest("Room not found.");
 
             return Ok(rooms);
 
-  
-
         }
 
-        /*  // Endpoint to get all classes for a specific room
-          [HttpGet("classes/room/id")]
-          public async Task<IActionResult> GetClassesForRoom(string roomNumber)
-          {
-              var roomId = await GetRoomIdByRoomNumberAsync(roomNumber);
-              // Сначала проверяем, существует ли комната с данным номером
-              var room = await _context.Rooms
-                  .AsNoTracking()  // Убираем отслеживание для оптимизации запроса
-                  .SingleOrDefaultAsync(r => r.RoomNumber == roomNumber);
-              Console.WriteLine(room);
+        [HttpGet("teacher/all")]
+        public async Task<IActionResult> GetAllTeacherData()
+        {
+            var teachers = await _teacherRepository.GetAllTeachersAsync();
 
-              // Если комната не найдена, возвращаем сообщение об ошибке
-              if (room == null)
-              {
-                  return BadRequest("Room does not exist.");
-              }
+            if (teachers == null) return BadRequest("Teacher not found.");
 
+            return Ok(teachers);
+        }
 
-              // Получаем все занятия, привязанные к RoomId этой комнаты
-              var classes = await _context.Classes
-                  .Where(c => c.RoomId == roomId) // Используем RoomId, найденный в предыдущем запросе
-                   .Include(c => c.ClassesDescription)  // Присоединяем информацию о описании занятия, если требуется
-                   .Select(c => new
-                   {
-                       //ClassTitle = c.ClassesDescriptions.Select(d => d.Title).FirstOrDefault()
-                       RoomNumber = c.Room.RoomNumber,
-                       TeacherName = c.Teacher.Username,
-                       ClassTitle = c.ClassesDescription.Title,
-                       RoomDescription = c.ClassesDescription.Description  
-                   })
-                  .ToListAsync();
-
-              // Проверяем, есть ли занятия для данной комнаты
-              if (classes.Count == 0)
-              {
-                  return NotFound("No classes found for this room.");
-              }
-
-              // Возвращаем список занятий
-              return Ok(classes);
-
-              //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! нужно выводить по айди а не по комнате сделать проверку и вывод
-              var classes = await _context.Classes
-                 .Where(c => c.RoomId == room.RoomId)
-                 //.Include(c => c.ClassesDescription) // Подключаем описание занятия
-                 //.Include(c => c.Teacher) // Подключаем информацию о преподавателе, если нужно
-                 .ToListAsync();
-
-
-
-              if (classes.Count == 0)
-              {
-                  return NotFound("No classes found for this room.");
-              }
-
-              return Ok(classes);
-          }*/
-
-        // Endpoint to get all classes for a specific room
+       
         [HttpGet("classes/{roomId}/id")]
         public async Task<IActionResult> GetClassesForRoom(string roomId)
         {
-            // var roomId = await GetRoomIdByRoomNumberAsync(roomNumber);
             if (string.IsNullOrEmpty(roomId)) return BadRequest("Room ID is missing.");
 
             var room = await _context.Rooms
@@ -1006,7 +761,7 @@ namespace WebAppsMoodle.Controllers
                     IsEven = r.IsEven,
                     IsEveryWeek = r.IsEveryWeek,
                     CanceledDates = c.CanceledRecurrClass
-                        .Where(cr => cr.ClassesId == c.ClassesId) // Проверяем, относится ли отмена к этому классу
+                        .Where(cr => cr.ClassesId == c.ClassesId) 
                         .Select(cr => cr.CanceledDate.Value.ToShortDateString()) // Берем дату отмены
                         .ToList()
                 }).ToList(),
@@ -1049,8 +804,6 @@ namespace WebAppsMoodle.Controllers
 
             if (room == null) return BadRequest("Room not found.");
 
-
-            //если есть задание к этому кабинету то добавить вывод если нет вывод данных кабинета и здания
             var classes = await _context.Classes
               .Include(c => c.Room)
               .Include(c => c.Campus)
@@ -1068,16 +821,13 @@ namespace WebAppsMoodle.Controllers
             }).ToList();
 
             return Ok(result);
-            // Если комната не найдена, возвращаем null
-            // return room?.RoomId; // Возвращаем RoomId или null, если комната не найдена
         }
 
         // Endpoint to get all classes for a specific day of the week
         [HttpGet("classes/day/dayOfWeek")]
         public async Task<IActionResult> GetClassesForDayOfWeek(int dayOfWeek)
         {
-            // Проверяем, что введенное значение дня недели находится в пределах от 0 до 6
-            // Так как DayOfWeek начинается с 0 (воскресенье) по 6 (суббота)
+          
             if (dayOfWeek < 0 || dayOfWeek > 6) 
             {
                 return BadRequest("Invalid day of the week. Please provide a number between 0 (Sunday) and 6 (Saturday).");
@@ -1101,7 +851,7 @@ namespace WebAppsMoodle.Controllers
                .ThenInclude(c => c.CanceledRecurrClass)    
            .ToListAsync();
 
-            // Проверяем, есть ли занятия для данного дня недели
+          
             if (classes.Count == 0)
             {
                 return NotFound(new { message = $"No classes found for the specified day of the week: {selectedDay}.", selectedDay });
@@ -1128,13 +878,12 @@ namespace WebAppsMoodle.Controllers
                 recurrenceStartTime = c.RecurrenceStartTime,
                 recurrenceEndTime = c.RecurrenceEndTime,
                 CanceledDates = c.Classes.CanceledRecurrClass
-                    .Where(cr => cr.ClassesId == c.Classes.ClassesId) // Проверяем, относится ли отмена к этому классу
-                    .Select(cr => cr.CanceledDate.Value.ToShortDateString()) // Берем дату отмены
+                    .Where(cr => cr.ClassesId == c.Classes.ClassesId) 
+                    .Select(cr => cr.CanceledDate.Value.ToShortDateString()) 
                     .ToList()
 
             }).ToList();
 
-            // Возвращаем результат
             return Ok(result);
         }
 
@@ -1203,20 +952,15 @@ namespace WebAppsMoodle.Controllers
         [HttpGet("classes/date/AllClassesByDate")]
         public async Task<IActionResult> GetAllClassesByDate(DateTime date)
         {
-            // Определяем начало семестра и его четность
+          
             DateTime semesterStartDate = new DateTime(2024, 10, 1);
             DateTime semesterEndDate = new DateTime(2025, 2, 28);
 
-            /*  // Определяем четность текущей недели относительно начала семестра
-              int daysDifference = (date - semesterStartDate).Days;
-              bool isCurrentWeekEven = (daysDifference / 7) % 2 == 0;*/
             int daysDifference = (date - semesterStartDate).Days;
             bool isCurrentWeekEven = ((daysDifference / 7) % 2) == 0;
 
-            // Получаем номер дня недели для заданной даты
             var dayOfWeek = date.DayOfWeek;
 
-            // Загружаем все классы с их данными
             var classes = await _context.Classes
                 .Include(c => c.ClassesDescription)
                 .Include(c => c.Teacher)
@@ -1225,7 +969,6 @@ namespace WebAppsMoodle.Controllers
                 .Include(c => c.RecurringClassDates)
                 .ToListAsync();
 
-            // Фильтрация одноразовых занятий
             var oneTimeClasses = classes
                 .Where(c => c.OneTimeClassDates.Any(o => o.OneTimeClassFullDate?.Date == date.Date))
                 .Select(c => new
@@ -1241,11 +984,11 @@ namespace WebAppsMoodle.Controllers
                         .Select(o => o.OneTimeClassFullDate?.ToString("yyyy-MM-dd"))
                 });
 
-            // Фильтрация повторяющихся занятий
+   
             var recurringClasses = classes
                 .Where(c => c.RecurringClassDates.Any(r =>
                     r.RecurrenceDay == dayOfWeek
-                    && (r.IsEveryWeek || r.IsEven == isCurrentWeekEven)  // Проверка на каждую неделю или четность недели
+                    && (r.IsEveryWeek || r.IsEven == isCurrentWeekEven) 
                     && date.TimeOfDay >= r.RecurrenceStartTime
                     && date.TimeOfDay <= r.RecurrenceEndTime
                 ))
@@ -1263,7 +1006,7 @@ namespace WebAppsMoodle.Controllers
                         .FirstOrDefault()
                 });
 
-            // Объединяем результаты
+
             var allClasses = oneTimeClasses.Cast<object>().Concat(recurringClasses.Cast<object>());
 
             if (!allClasses.Any())
@@ -1374,14 +1117,13 @@ namespace WebAppsMoodle.Controllers
          }*/
         public async Task<IActionResult> GetRecurringClassBydate(DateTime date)
         {
-            // Получаем номер дня недели для заданной даты
+            
             var dayOfWeek = date.DayOfWeek;
 
 
-            // Вычисляем четность недели
             bool isEvenWeek = IsEvenWeek(date);
 
-            // Загружаем все классы с их повторяющимися датами из базы данных
+         
             var classes = await _context.Classes
                 .Include(c => c.ClassesDescription)
                 .Include(c => c.Teacher)
@@ -1390,13 +1132,12 @@ namespace WebAppsMoodle.Controllers
                 .Include(c => c.RecurringClassDates)
                 .ToListAsync();
 
-            // Фильтруем на стороне сервера
             var filteredClasses = classes
                 .Where(c => c.RecurringClassDates.Any(r =>
-                    r.RecurrenceDay == dayOfWeek && // Сравнение дня недели
+                    r.RecurrenceDay == dayOfWeek && 
                     (r.IsEveryWeek ||
                      (r.IsEven && isEvenWeek) ||
-                     (!r.IsEven && !isEvenWeek)) // Проверка четности недели
+                     (!r.IsEven && !isEvenWeek)) 
                 ))
                 .Select(c => new
                 {
@@ -1411,7 +1152,7 @@ namespace WebAppsMoodle.Controllers
                     CampusName = c.Campus.CampusName,
                     RecurrenceDay = c.RecurringClassDates
                         .Where(r => r.RecurrenceDay == dayOfWeek)
-                        .Select(r => r.RecurrenceDay.ToString()) // Получаем строковое представление дня недели
+                        .Select(r => r.RecurrenceDay.ToString()) 
                         .FirstOrDefault()
                 })
                 .ToList();
