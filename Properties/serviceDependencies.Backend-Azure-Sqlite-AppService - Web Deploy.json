@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "apis1": {
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.ApiManagement/service/Backend-Azure-Sqlite-API-Managment/apis/Backend-Azure-Sqlite-API",
+      "type": "apis.azure"
+    }
+  }
+}

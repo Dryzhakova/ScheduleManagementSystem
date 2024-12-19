@@ -49,27 +49,24 @@ namespace WebAppsMoodle.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] TeacherRegisterModel model)
         {
-            // Check if username already exists
             if (await _context.Teachers.AnyAsync(t => t.Username == model.Username))
-            {
-                return BadRequest("Username already exists");
-            }
+                return BadRequest(new { Message = "Username already exists" });
+
             if (!IsNameCorrect(model.Username))
-            {
-                return BadRequest("Username must be at least 3 characters long, contain first uppercase letter");
-            }
-            // Проверка надежности пароля
+                return BadRequest(new { Message = "Username must be at least 3 characters long, contain a first uppercase letter" });
+
             if (!IsPasswordStrong(model.Password))
-            {
-                return BadRequest(new { Message = "Password must be at least 8 characters long, contain one uppercase letter, one lowercase letter, one number, and one special character." });
-            }
+                return BadRequest(new
+                {
+                    Message = "Password must be at least 8 characters long, contain one uppercase letter, one lowercase letter, one number, and one special character."
+                });
 
-
+            var passwordHasher = new PasswordHasher<Teacher>();
             // We should hash the password before storing it
             var newTeacher = new Teacher
             {
                 Username = model.Username,
-                Password = model.Password,
+                Password = passwordHasher.HashPassword(null, model.Password),
                 Title = model.Title
             };
 
@@ -102,14 +99,24 @@ namespace WebAppsMoodle.Controllers
         public async Task<IActionResult> Login([FromBody] TeacherLoginModel model)
         {
             // Check if user exists
-            var teacher = _context.Teachers.SingleOrDefault(t => t.Username == model.Username);
-            if (teacher == null)return BadRequest("Invalid login");
+            var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.Username == model.Username);
+            if (teacher == null) return BadRequest("Invalid login");
 
-            var existedToken = await _context.UserTokens.SingleOrDefaultAsync(ut => ut.TeacherID == teacher.TeacherId && ut.Expiration > DateTime.UtcNow);
+            var passwordHasher = new PasswordHasher<Teacher>();
+            if (passwordHasher.VerifyHashedPassword(teacher, teacher.Password, model.Password) != PasswordVerificationResult.Success)
+                return BadRequest(new { Message = "Invalid Password" });
+
+            var existedToken = await _context.UserTokens.SingleOrDefaultAsync(ut => ut.TeacherID == teacher.TeacherId);
+
+            if (existedToken != null && existedToken.Expiration <= DateTime.UtcNow)
+            {
+                _context.UserTokens.Remove(existedToken);
+                await _context.SaveChangesAsync();
+                existedToken = null; 
+            }
 
             if (existedToken == null)
             {
-
                 var token = GenerateJwtToken(teacher);
 
                 var userToken = new UserToken
@@ -119,18 +126,25 @@ namespace WebAppsMoodle.Controllers
                     Expiration = DateTime.UtcNow.AddDays(7)
                 };
 
-
                 _context.UserTokens.Add(userToken);
                 await _context.SaveChangesAsync();
-                // Сохраняем TeacherId в сессию
-                // HttpContext.Session.SetString("TeacherId", teacher.TeacherId);
-                return Ok(new { Message = "Login successful", TeacherId = teacher.TeacherId, Token = token, Expiration = userToken.Expiration.ToShortDateString() });
+
+                return Ok(new
+                {
+                    Message = "Login successful",
+                    TeacherId = teacher.TeacherId,
+                    Token = token,
+                    Expiration = userToken.Expiration.ToShortDateString()
+                });
             }
 
-
-            return Ok(new { Message = "Login successful", TeacherId = teacher.TeacherId, Token = existedToken.Token, Expiration = existedToken.Expiration.ToShortDateString() });
-
-
+            return Ok(new
+            {
+                Message = "Login successful",
+                TeacherId = teacher.TeacherId,
+                Token = existedToken.Token,
+                Expiration = existedToken.Expiration.ToShortDateString()
+            });
         }
 
         [HttpGet("validate-token")]
@@ -333,7 +347,8 @@ namespace WebAppsMoodle.Controllers
             return weekNumber % 2 == 0;
         }
 
-        [HttpPost("cancelRecurringClass/{classId}")]
+       [HttpPost("cancelRecurringClass/{classId}")]
+       
         public async Task<IActionResult> CancelRecurringClass(string classId, string teacherId, string teacherToken, [FromBody] DateTime cancellationDate)
         {
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
@@ -399,7 +414,7 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "Recurring class restored" });
         }
 
-        [HttpPut("updateClass/{classId}")]
+       [HttpPut("updateClass/{classId}")]
         public async Task<IActionResult> UpdateClass(string classId, string teacherId, string teacherToken, [FromBody] UpdateClassRequest model)
         {
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
@@ -450,7 +465,6 @@ namespace WebAppsMoodle.Controllers
                 }
             }
 
-            // Обновление расписания для повторяющегося занятия
             if (!model.IsOneTimeClass)
             {
                 var recurringClass = classToUpdate.RecurringClassDates.FirstOrDefault();
@@ -628,6 +642,7 @@ namespace WebAppsMoodle.Controllers
     } */
 
         [HttpGet("{teacherId}/room/all")]
+
         public async Task<IActionResult> GetClassesForTeacher(string teacherId)
         {
             //var teacherId = HttpContext.Session.GetString("TeacherId");
