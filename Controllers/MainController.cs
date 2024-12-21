@@ -295,6 +295,47 @@ namespace WebAppsMoodle.Controllers
             return Ok(new { Message = "Class and Room created successfully.", ClassesID = newClass.ClassesId });
         }
 
+        [HttpPost("createRoom")]
+        public async Task<IActionResult> CreateRoom(string RoomNumber, string CampusName)
+        {
+
+
+            if (string.IsNullOrEmpty(RoomNumber)) return BadRequest("room Number is missing.");
+
+            var existingRoom = await _context.Rooms.SingleOrDefaultAsync(r => r.RoomNumber == RoomNumber);
+            if (existingRoom == null)
+            {
+                if (!int.TryParse(RoomNumber, out _)) throw new ArgumentException("Room number must contain only digits.");
+                existingRoom = new Room { RoomNumber = RoomNumber };
+                await _context.Rooms.AddAsync(existingRoom);
+            }
+
+
+            Room newRoom;
+
+            if (existingRoom == null)
+            {
+                //only digits
+                if (!int.TryParse(RoomNumber, out _)) throw new ArgumentException("Room number must contain only digits.");
+                newRoom = new Room { RoomNumber = RoomNumber };
+                await _context.Rooms.AddAsync(newRoom);
+            }
+            else
+            {
+                newRoom = existingRoom;
+            }
+
+            var newCampus = new Campus
+            {
+                CampusName = CampusName
+            };
+
+            await _context.Campuses.AddAsync(newCampus);
+            await _context.SaveChangesAsync();
+
+
+            return Ok(new { Message = "Campus name and Room created successfully.", CampusName = CampusName, RoomNumber = RoomNumber });
+        }
 
         [HttpPost("cancelOrRestoreClassOneTime/{classId}")]
         public async Task<IActionResult> RestoreCancelOneTimeClass(string classId, string teacherId, string teacherToken)
