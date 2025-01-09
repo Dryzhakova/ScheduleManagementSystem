@@ -194,20 +194,10 @@ namespace WebAppsMoodle.Controllers
 
             if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
 
-          
-            var existingRoom = await _context.Rooms.SingleOrDefaultAsync(r => r.RoomNumber == model.RoomNumber);
-            if (existingRoom == null)
-            {
-                if (!int.TryParse(model.RoomNumber, out _)) throw new ArgumentException("Room number must contain only digits.");
-                existingRoom = new Room { RoomNumber = model.RoomNumber };
-                await _context.Rooms.AddAsync(existingRoom);
-            }
-
-     
             Room newRoom;
             Classes newClass;
 
-          
+            var existingRoom = await _context.Rooms.SingleOrDefaultAsync(r => r.RoomNumber == model.RoomNumber);
             if (existingRoom == null)
             {
                 //only digits
@@ -346,7 +336,7 @@ namespace WebAppsMoodle.Controllers
 
             var userToken = await _context.UserTokens
                .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
-            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
+            if (userToken?.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
             if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
 
             var classData = await _context.Classes
@@ -399,15 +389,16 @@ namespace WebAppsMoodle.Controllers
 
             if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
 
-            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
+            if (userToken?.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
             // cancellationDate.ToString(); 
 
             var reccuringClass = await _context.RecurringClasses
+                .Include(r => r.Classes)
                 .FirstOrDefaultAsync(r => r.ClassesId == classId);
 
             if (reccuringClass == null) return NotFound(new { Message = "Recurring class not found." });
 
-            if (reccuringClass.Classes.TeacherId != teacherId) return BadRequest(new { Message = "You do not have permission to cancel this class." });
+            if (reccuringClass.Classes.TeacherId != teacherId)  return BadRequest(new { Message = "You do not have permission to cancel this class." }); // return BadRequest(new { Message = $"Expected: {teacherId}, Actual: {reccuringClass.Classes.TeacherId}" });
 
             if (reccuringClass.RecurrenceDay != cancellationDate.DayOfWeek) return BadRequest(new { Message = "The provided date does not match the recurring schedule." });
 
@@ -434,20 +425,21 @@ namespace WebAppsMoodle.Controllers
         {
             if (string.IsNullOrEmpty(teacherId)) return BadRequest("Teacher ID is missing.");
 
+
             var userToken = await _context.UserTokens
                .FirstOrDefaultAsync(ut => ut.TeacherID == teacherId && ut.Token == teacherToken && ut.Expiration > DateTime.UtcNow);
-
+            if (userToken?.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
             if (userToken == null) return Unauthorized(new { message = "Invalid or expired token." });
 
-            if (userToken.TeacherID == null) return BadRequest(new { message = "Teacher ID is not associated with the token." });
 
             var canceledDate = await _context.CanceledRecurringClasses
+                .Include(r => r.Class)
                 .FirstOrDefaultAsync(c => c.ClassesId == classId && c.CanceledDate.Value.Date == restorationDate.Date);
            
             if (canceledDate.Class.TeacherId != teacherId) return BadRequest(new { Message = "You do not have permission to cancel this class." });
 
 
-            if (canceledDate != null) return NotFound(new { message = "No canceled class found for the specified date." });
+            if (canceledDate == null) return NotFound(new { message = "No canceled class found for the specified date." });
 
             _context.CanceledRecurringClasses.Remove(canceledDate); 
             await _context.SaveChangesAsync();
